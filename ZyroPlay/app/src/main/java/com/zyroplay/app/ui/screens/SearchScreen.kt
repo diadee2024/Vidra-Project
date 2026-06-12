@@ -34,10 +34,12 @@ import com.zyroplay.app.ui.theme.ZyroTextMuted
 fun SearchScreen(
     query: String,
     results: SearchResults,
+    favorites: Set<String> = emptySet(),
     onQueryChange: (String) -> Unit,
     onChannelClick: (Channel) -> Unit,
     onMovieClick: (VodItem) -> Unit,
-    onSeriesClick: (SeriesItem) -> Unit
+    onSeriesClick: (SeriesItem) -> Unit,
+    onToggleFavorite: (String) -> Unit = {}
 ) {
     val theme = LocalZyroTheme.current
 
@@ -86,7 +88,12 @@ fun SearchScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(results.channels) { ch ->
-                                ChannelCard(channel = ch, onClick = { onChannelClick(ch) })
+                                ChannelCard(
+                                    channel = ch,
+                                    onClick = { onChannelClick(ch) },
+                                    isFavorite = favorites.contains(ch.id),
+                                    onToggleFavorite = { onToggleFavorite(ch.id) }
+                                )
                             }
                         }
                     }
@@ -104,7 +111,9 @@ fun SearchScreen(
                         PosterCard(
                             item = movie,
                             onClick = { onMovieClick(movie) },
-                            modifier = Modifier.padding(horizontal = 24.dp)
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                            isFavorite = favorites.contains(movie.id),
+                            onToggleFavorite = { onToggleFavorite(movie.id) }
                         )
                     }
                 }
@@ -121,7 +130,9 @@ fun SearchScreen(
                         SeriesCard(
                             series = s,
                             onClick = { onSeriesClick(s) },
-                            modifier = Modifier.padding(horizontal = 24.dp)
+                            modifier = Modifier.padding(horizontal = 24.dp),
+                            isFavorite = favorites.contains(s.id),
+                            onToggleFavorite = { onToggleFavorite(s.id) }
                         )
                     }
                 }

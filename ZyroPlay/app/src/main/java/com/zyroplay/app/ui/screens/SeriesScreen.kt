@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -33,6 +34,7 @@ import com.zyroplay.app.model.EpisodeItem
 import com.zyroplay.app.model.SeriesItem
 import com.zyroplay.app.ui.components.SectionHeader
 import com.zyroplay.app.ui.components.SeriesCard
+import com.zyroplay.app.ui.components.ZyroAsyncImage
 import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroCard
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
@@ -43,9 +45,11 @@ fun SeriesScreen(
     series: List<SeriesItem>,
     selectedSeries: SeriesItem?,
     episodes: List<EpisodeItem>,
+    favorites: Set<String> = emptySet(),
     onSeriesClick: (SeriesItem) -> Unit,
     onEpisodeClick: (EpisodeItem) -> Unit,
-    onBackFromEpisodes: () -> Unit
+    onBackFromEpisodes: () -> Unit,
+    onToggleFavorite: (String) -> Unit = {}
 ) {
     val theme = LocalZyroTheme.current
 
@@ -59,16 +63,32 @@ fun SeriesScreen(
                 Spacer(modifier = Modifier.padding(4.dp))
                 Text("Retour", color = theme.secondary)
             }
-            Text(
-                selectedSeries.title,
-                style = MaterialTheme.typography.headlineMedium,
-                color = ZyroTextPrimary,
-                fontWeight = FontWeight.Bold
-            )
-            Text(selectedSeries.genre, color = ZyroTextSecondary)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                ZyroAsyncImage(
+                    url = selectedSeries.posterUrl,
+                    contentDescription = selectedSeries.title,
+                    fallbackText = selectedSeries.title,
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(120.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                )
+                Column {
+                    Text(
+                        selectedSeries.title,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = ZyroTextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(selectedSeries.genre, color = ZyroTextSecondary)
+                    if (selectedSeries.description.isNotBlank()) {
+                        Text(selectedSeries.description, color = ZyroTextSecondary, maxLines = 3)
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(episodes) { episode ->
+                items(episodes, key = { it.id }) { episode ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -101,8 +121,13 @@ fun SeriesScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(series) { item ->
-                    SeriesCard(series = item, onClick = { onSeriesClick(item) })
+                items(series, key = { it.id }) { item ->
+                    SeriesCard(
+                        series = item,
+                        onClick = { onSeriesClick(item) },
+                        isFavorite = favorites.contains(item.id),
+                        onToggleFavorite = { onToggleFavorite(item.id) }
+                    )
                 }
             }
         }

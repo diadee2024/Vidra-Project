@@ -28,37 +28,55 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.zyroplay.app.model.VodItem
+import com.zyroplay.app.model.CatchUpProgram
 import com.zyroplay.app.ui.components.SectionHeader
 import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroCard
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
 import com.zyroplay.app.ui.theme.ZyroTextSecondary
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun CatchUpScreen(
-    programs: List<VodItem>,
-    onProgramClick: (VodItem) -> Unit
+    programs: List<CatchUpProgram>,
+    onProgramClick: (CatchUpProgram) -> Unit
 ) {
+    val dateFormat = SimpleDateFormat("dd/MM HH:mm", Locale.FRANCE)
+
     Column(modifier = Modifier.fillMaxSize()) {
         SectionHeader(
             title = "Replay / Catch-Up",
-            subtitle = "${programs.size} programmes disponibles"
+            subtitle = if (programs.isEmpty()) "Aucun replay — activez tv_archive sur votre serveur"
+            else "${programs.size} programmes disponibles"
         )
-        LazyColumn(
-            contentPadding = PaddingValues(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(programs) { program ->
-                CatchUpItem(program = program, onClick = { onProgramClick(program) })
+        if (programs.isEmpty()) {
+            Text(
+                "Les chaînes avec catch-up (tv_archive) afficheront leurs programmes passés ici.",
+                modifier = Modifier.padding(24.dp),
+                color = ZyroTextMuted
+            )
+        } else {
+            LazyColumn(
+                contentPadding = PaddingValues(24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(programs, key = { it.id }) { program ->
+                    CatchUpItem(
+                        program = program,
+                        timeLabel = dateFormat.format(Date(program.startTime)),
+                        onClick = { onProgramClick(program) }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun CatchUpItem(program: VodItem, onClick: () -> Unit) {
+private fun CatchUpItem(program: CatchUpProgram, timeLabel: String, onClick: () -> Unit) {
     val theme = LocalZyroTheme.current
     Row(
         modifier = Modifier
@@ -83,10 +101,13 @@ private fun CatchUpItem(program: VodItem, onClick: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(program.title, style = MaterialTheme.typography.titleMedium, color = ZyroTextPrimary)
             Text(
-                "${program.genre} • ${program.duration.ifBlank { "Replay" }}",
+                "${program.channelName} • $timeLabel",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ZyroTextSecondary
             )
+            if (program.description.isNotBlank()) {
+                Text(program.description, style = MaterialTheme.typography.bodySmall, color = ZyroTextMuted, maxLines = 2)
+            }
         }
         Icon(Icons.Default.PlayArrow, null, tint = theme.primary, modifier = Modifier.size(32.dp))
     }

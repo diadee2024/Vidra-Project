@@ -57,7 +57,9 @@ class XtreamApi(
                 logoUrl = obj.string("stream_icon"),
                 streamUrl = buildLiveUrl(auth, streamId, obj.string("container_extension") ?: "ts"),
                 epgChannelId = obj.string("epg_channel_id") ?: obj.string("name"),
-                currentProgram = categories[catId] ?: ""
+                currentProgram = categories[catId] ?: "",
+                tvArchive = obj.string("tv_archive") == "1",
+                tvArchiveDurationDays = obj.string("tv_archive_duration")?.toIntOrNull() ?: 0
             )
         }
     }

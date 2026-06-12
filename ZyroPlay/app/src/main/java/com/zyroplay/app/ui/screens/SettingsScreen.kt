@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Icon
@@ -49,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.zyroplay.app.model.PlayerSettings
 import com.zyroplay.app.model.SavedPlaylist
 import com.zyroplay.app.ui.components.SectionHeader
 import com.zyroplay.app.ui.theme.LocalZyroTheme
@@ -63,13 +65,43 @@ fun SettingsScreen(
     currentThemeIndex: Int,
     savedPlaylists: List<SavedPlaylist>,
     activePlaylistId: String?,
+    playerSettings: PlayerSettings = PlayerSettings(),
+    parentalControlEnabled: Boolean = false,
+    tmdbApiKey: String = "",
     onThemeSelected: (Int) -> Unit,
     onSelectPlaylist: (SavedPlaylist) -> Unit,
     onDeletePlaylist: (String) -> Unit,
     onAddPlaylist: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onSavePlayerSettings: (PlayerSettings) -> Unit = {},
+    onParentalControlChange: (Boolean, String?) -> Unit = { _, _ -> },
+    onTmdbKeyChange: (String) -> Unit = {}
 ) {
     var showPlaylists by remember { mutableStateOf(false) }
+    var showPlayerSettings by remember { mutableStateOf(false) }
+    var showPinSetup by remember { mutableStateOf(false) }
+    var autoUpdateEpg by remember { mutableStateOf(true) }
+
+    if (showPlayerSettings) {
+        PlayerSettingsDialog(
+            settings = playerSettings,
+            tmdbApiKey = tmdbApiKey,
+            onDismiss = { showPlayerSettings = false },
+            onSave = onSavePlayerSettings,
+            onTmdbKeyChange = onTmdbKeyChange
+        )
+    }
+
+    if (showPinSetup) {
+        ParentalPinDialog(
+            title = "Définir le code PIN",
+            onDismiss = { showPinSetup = false },
+            onConfirm = { pin ->
+                onParentalControlChange(true, pin)
+                true
+            }
+        )
+    }
 
     if (showPlaylists) {
         PlaylistsScreen(
@@ -85,6 +117,15 @@ fun SettingsScreen(
             onThemeSelected = onThemeSelected,
             onManagePlaylists = { showPlaylists = true },
             playlistCount = savedPlaylists.size,
+            playerSettings = playerSettings,
+            parentalControlEnabled = parentalControlEnabled,
+            onOpenPlayerSettings = { showPlayerSettings = true },
+            onParentalToggle = { enabled ->
+                if (enabled) showPinSetup = true
+                else onParentalControlChange(false, null)
+            },
+            autoUpdateEpg = autoUpdateEpg,
+            onAutoUpdateEpg = { autoUpdateEpg = it },
             onLogout = onLogout
         )
     }
@@ -96,14 +137,18 @@ private fun SettingsMain(
     onThemeSelected: (Int) -> Unit,
     onManagePlaylists: () -> Unit,
     playlistCount: Int,
+    playerSettings: PlayerSettings,
+    parentalControlEnabled: Boolean,
+    onOpenPlayerSettings: () -> Unit,
+    onParentalToggle: (Boolean) -> Unit,
+    autoUpdateEpg: Boolean,
+    onAutoUpdateEpg: (Boolean) -> Unit,
     onLogout: () -> Unit
 ) {
     val theme = LocalZyroTheme.current
-    var parentalControl by remember { mutableStateOf(false) }
-    var autoUpdateEpg by remember { mutableStateOf(true) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SectionHeader(title = "Réglages", subtitle = "Thèmes • Playlists • Chromecast")
+        SectionHeader(title = "Réglages", subtitle = "Thèmes • Playlists • Lecteur")
 
         LazyColumn(
             contentPadding = PaddingValues(24.dp),
@@ -145,13 +190,25 @@ private fun SettingsMain(
             item {
                 SettingRow(Icons.AutoMirrored.Filled.PlaylistPlay, "Gérer les playlists", "$playlistCount enregistrée(s)", onManagePlaylists)
             }
+            item {
+                SettingRow(
+                    Icons.Default.Settings,
+                    "Réglages lecteur",
+                    "Tampon ${playerSettings.bufferSeconds}s • Ratio ${playerSettings.aspectRatio}",
+                    onOpenPlayerSettings
+                )
+            }
             item { SettingRow(Icons.Default.Cast, "Chromecast", "Diffusez sur TV Google Cast", null) }
             item { SettingRow(Icons.Default.HighQuality, "Qualité vidéo", "Auto — 4K HLS", null) }
             item { SettingRow(Icons.Default.PlayCircle, "Lecteur", "ExoPlayer intégré", null) }
-            item { SettingRow(Icons.Default.Subtitles, "Sous-titres", "Multi-langues", null) }
-            item { SettingRow(Icons.Default.Language, "Audio", "Multi-pistes", null) }
-            item { SettingToggle(Icons.Default.ChildCare, "Contrôle parental", parentalControl) { parentalControl = it } }
-            item { SettingToggle(Icons.Default.Update, "Mise à jour EPG", autoUpdateEpg) { autoUpdateEpg = it } }
+            item { SettingRow(Icons.Default.Subtitles, "Sous-titres", if (playerSettings.subtitlesEnabled) "Activés" else "Désactivés", onOpenPlayerSettings) }
+            item { SettingRow(Icons.Default.Language, "Audio", playerSettings.preferredAudioLanguage, onOpenPlayerSettings) }
+            item {
+                SettingToggle(Icons.Default.ChildCare, "Contrôle parental", parentalControlEnabled) {
+                    onParentalToggle(it)
+                }
+            }
+            item { SettingToggle(Icons.Default.Update, "Mise à jour EPG", autoUpdateEpg, onAutoUpdateEpg) }
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ZyroCard)

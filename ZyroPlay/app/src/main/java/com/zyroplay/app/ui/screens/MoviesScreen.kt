@@ -12,11 +12,14 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.zyroplay.app.model.VodItem
@@ -24,20 +27,28 @@ import com.zyroplay.app.ui.components.CategoryChip
 import com.zyroplay.app.ui.components.PosterCard
 import com.zyroplay.app.ui.components.SectionHeader
 
+private const val PAGE_SIZE = 50
+
 @Composable
 fun MoviesScreen(
     movies: List<VodItem>,
+    totalMovies: Int = movies.size,
     favorites: Set<String>,
     onMovieClick: (VodItem) -> Unit,
-    onToggleFavorite: (String) -> Unit
+    onToggleFavorite: (String) -> Unit,
+    onLoadMore: () -> Unit = {},
+    hasMore: Boolean = false
 ) {
     val categories = listOf("Tous") + movies.map { it.genre }.filter { it.isNotBlank() }.distinct().take(8)
     var selectedCategory by remember { mutableStateOf("Tous") }
+    var page by remember { mutableStateOf(0) }
     val filtered = if (selectedCategory == "Tous") movies
     else movies.filter { it.genre.contains(selectedCategory, true) }
+    val visible = filtered.take((page + 1) * PAGE_SIZE)
+    val moreAvailable = visible.size < filtered.size
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SectionHeader(title = "Films", subtitle = "${movies.size} films en VOD")
+        SectionHeader(title = "Films", subtitle = "$totalMovies films en VOD")
         LazyRow(
             modifier = Modifier.padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -46,20 +57,35 @@ fun MoviesScreen(
                 CategoryChip(
                     label = category,
                     selected = selectedCategory == category,
-                    onClick = { selectedCategory = category }
+                    onClick = { selectedCategory = category; page = 0 }
                 )
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
         LazyVerticalGrid(
             columns = GridCells.Adaptive(150.dp),
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(24.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(filtered) { movie ->
-                PosterCard(item = movie, onClick = { onMovieClick(movie) }, isFavorite = favorites.contains(movie.id))
+            items(visible, key = { it.id }) { movie ->
+                PosterCard(
+                    item = movie,
+                    onClick = { onMovieClick(movie) },
+                    isFavorite = favorites.contains(movie.id),
+                    onToggleFavorite = { onToggleFavorite(movie.id) }
+                )
+            }
+        }
+        if (moreAvailable) {
+            Button(
+                onClick = { page++ },
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(16.dp)
+            ) {
+                Text("Charger plus (${visible.size}/${filtered.size})")
             }
         }
     }

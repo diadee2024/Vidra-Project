@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.zyroplay.app.BuildConfig
 import com.zyroplay.app.model.NavDestination
 import com.zyroplay.app.ui.navigation.NavItem
 import com.zyroplay.app.ui.navigation.mainNavItems
@@ -30,6 +31,7 @@ import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroSurface
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
+import com.zyroplay.app.ui.modifier.tvFocusable
 import com.zyroplay.app.ui.theme.ZyroTextSecondary
 
 @Composable
@@ -76,7 +78,7 @@ fun ZyroSidebar(
         Spacer(modifier = Modifier.weight(1f))
 
         Text(
-            text = "v1.0.0",
+            text = "v${BuildConfig.VERSION_NAME}",
             style = MaterialTheme.typography.labelMedium,
             color = ZyroTextMuted
         )
@@ -106,6 +108,7 @@ private fun SidebarItem(
                     Modifier
                 }
             )
+            .tvFocusable()
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,

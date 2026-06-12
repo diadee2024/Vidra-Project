@@ -1,6 +1,7 @@
 package com.zyroplay.app.data
 
 import com.zyroplay.app.model.Channel
+import com.zyroplay.app.model.SeriesItem
 import com.zyroplay.app.model.VodItem
 
 object M3uParser {
@@ -66,6 +67,42 @@ object M3uParser {
             logo = extractAttr(attrs, "tvg-logo"),
             epgId = extractAttr(attrs, "tvg-id")
         )
+    }
+
+    fun parseSeriesFromM3u(content: String): List<SeriesItem> {
+        return parseChannels(content)
+            .filter {
+                it.category.contains("series", true) ||
+                    it.category.contains("série", true) ||
+                    it.category.contains("tv show", true)
+            }
+            .groupBy { extractSeriesName(it.name) }
+            .map { (title, episodes) ->
+                SeriesItem(
+                    id = "m3u_series_${title.hashCode()}",
+                    title = title,
+                    seasons = episodes.map { extractSeason(it.name) }.maxOrNull() ?: 1,
+                    rating = "",
+                    genre = episodes.firstOrNull()?.category ?: "Séries",
+                    posterUrl = episodes.firstOrNull()?.logoUrl,
+                    episodes = episodes.size,
+                    description = ""
+                )
+            }
+    }
+
+    fun extractEpgUrl(content: String): String? {
+        val line = content.lines().firstOrNull { it.startsWith("#EXTM3U", true) } ?: return null
+        return extractAttr(line, "url-tvg") ?: extractAttr(line, "x-tvg-url")
+    }
+
+    private fun extractSeriesName(name: String): String {
+        return name.substringBefore(" S").substringBefore(" - S").trim()
+    }
+
+    private fun extractSeason(name: String): Int {
+        val match = """S(\d+)""".toRegex(RegexOption.IGNORE_CASE).find(name)
+        return match?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 1
     }
 
     private fun extractAttr(source: String, key: String): String? {

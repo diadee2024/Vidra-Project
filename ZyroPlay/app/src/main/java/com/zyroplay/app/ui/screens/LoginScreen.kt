@@ -1,5 +1,8 @@
 package com.zyroplay.app.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zyroplay.app.model.PlaylistCredentials
@@ -53,15 +57,27 @@ fun LoginScreen(
     savedPlaylists: List<SavedPlaylist>,
     onLogin: (String, PlaylistCredentials) -> Unit,
     onQuickConnect: (SavedPlaylist) -> Unit,
+    onImportM3u: (String, String) -> Unit = { _, _ -> },
     onDemoMode: () -> Unit
 ) {
     val theme = LocalZyroTheme.current
+    val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
     var playlistName by remember { mutableStateOf("") }
     var serverUrl by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var m3uUrl by remember { mutableStateOf("") }
+
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        uri ?: return@rememberLauncherForActivityResult
+        runCatching {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                val content = stream.bufferedReader().readText()
+                onImportM3u(playlistName.ifBlank { uri.lastPathSegment ?: "M3U local" }, content)
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         ZyroGradientBackground()
@@ -124,6 +140,19 @@ fun LoginScreen(
                         LoginField("Mot de passe", password, onValueChange = { password = it })
                     } else {
                         LoginField("URL M3U / M3U8", m3uUrl, onValueChange = { m3uUrl = it })
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(ZyroSurfaceElevated)
+                                .border(1.dp, ZyroTextMuted.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
+                                .clickable { filePicker.launch(arrayOf("*/*")) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Importer un fichier M3U local", color = theme.secondary, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                     Box(

@@ -1,5 +1,6 @@
 package com.zyroplay.app.data
 
+import com.zyroplay.app.model.CatchUpProgram
 import com.zyroplay.app.model.Channel
 import com.zyroplay.app.model.EpgProgram
 import com.zyroplay.app.model.EpisodeItem
@@ -38,6 +39,15 @@ class IptvRepository(
         xtreamApi.getSeriesEpisodes(auth, seriesId)
     }
 
+    fun buildCatchUpPrograms(channels: List<Channel>, epg: List<EpgProgram>): List<CatchUpProgram> {
+        val auth = xtreamAuth ?: return emptyList()
+        return CatchUpHelper.buildCatchUpPrograms(
+            channels, epg, auth.serverBase, auth.username, auth.password
+        )
+    }
+
+    fun getServerBase(): String? = xtreamAuth?.serverBase
+
     private fun loadXtream(credentials: PlaylistCredentials): IptvContent {
         val auth = xtreamApi.authenticate(credentials)
         xtreamAuth = auth
@@ -65,10 +75,43 @@ class IptvRepository(
 
     private fun loadM3u(credentials: PlaylistCredentials): IptvContent {
         xtreamAuth = null
-        val content = fetchUrl(credentials.m3uUrl)
+        val content = if (credentials.m3uUrl.startsWith("local://")) {
+            val path = credentials.m3uUrl.removePrefix("local://")
+            java.io.File(path).readText()
+        } else {
+            fetchUrl(credentials.m3uUrl)
+        }
         val live = M3uParser.parseChannels(content)
         val movies = M3uParser.parseVodFromM3u(content)
-        return IptvContent(live, movies, emptyList(), emptyList())
+        val series = M3uParser.parseSeriesFromM3u(content)
+        val epgUrl = M3uParser.extractEpgUrl(content)
+        val epg = if (!epgUrl.isNullOrBlank()) {
+            try {
+                XmltvParser.parse(fetchUrl(epgUrl))
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+        val liveWithEpg = attachCurrentPrograms(live, epg)
+        return IptvContent(liveWithEpg, movies, series, epg)
+    }
+
+    suspend fun loadM3uFromContent(content: String): IptvContent = withContext(Dispatchers.IO) {
+        xtreamAuth = null
+        val live = M3uParser.parseChannels(content)
+        val movies = M3uParser.parseVodFromM3u(content)
+        val series = M3uParser.parseSeriesFromM3u(content)
+        val epgUrl = M3uParser.extractEpgUrl(content)
+        val epg = if (!epgUrl.isNullOrBlank()) {
+            try {
+                XmltvParser.parse(fetchUrl(epgUrl))
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } else emptyList()
+        IptvContent(attachCurrentPrograms(live, epg), movies, series, epg)
     }
 
     private fun fetchUrl(url: String): String {

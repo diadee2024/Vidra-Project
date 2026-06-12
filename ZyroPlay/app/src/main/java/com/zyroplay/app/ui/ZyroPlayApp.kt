@@ -28,22 +28,29 @@ import com.zyroplay.app.ui.screens.HomeScreen
 import com.zyroplay.app.ui.screens.LiveScreen
 import com.zyroplay.app.ui.screens.LoginScreen
 import com.zyroplay.app.ui.screens.MoviesScreen
+import com.zyroplay.app.ui.screens.ParentalPinDialog
 import com.zyroplay.app.ui.screens.PlayerScreen
 import com.zyroplay.app.ui.screens.SearchScreen
+import com.zyroplay.app.ui.screens.SeriesDetailScreen
 import com.zyroplay.app.ui.screens.SeriesScreen
 import com.zyroplay.app.ui.screens.SettingsScreen
 import com.zyroplay.app.ui.screens.SplashScreen
+import com.zyroplay.app.ui.screens.VodDetailScreen
 import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.viewmodel.IptvViewModel
 
 private enum class AppState { Splash, Login, Main, Player }
 
 @Composable
-fun ZyroPlayApp(viewModel: IptvViewModel = viewModel()) {
+fun ZyroPlayApp(
+    viewModel: IptvViewModel = viewModel(),
+    onEnterPiP: (() -> Unit)? = null
+) {
     val uiState by viewModel.uiState.collectAsState()
     var appState by remember { mutableStateOf(AppState.Splash) }
     var currentRoute by remember { mutableStateOf(NavDestination.Home.route) }
     var playRequest by remember { mutableStateOf<PlayRequest?>(null) }
+    var showPinDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val theme = LocalZyroTheme.current
 
@@ -63,6 +70,20 @@ fun ZyroPlayApp(viewModel: IptvViewModel = viewModel()) {
         }
     }
 
+    LaunchedEffect(uiState.parentalControlEnabled, uiState.parentalUnlocked) {
+        if (uiState.parentalControlEnabled && !uiState.parentalUnlocked && appState == AppState.Main) {
+            showPinDialog = true
+        }
+    }
+
+    if (showPinDialog) {
+        ParentalPinDialog(
+            title = "Déverrouiller ZyroPlay",
+            onDismiss = { showPinDialog = false },
+            onConfirm = { pin -> viewModel.verifyParentalPin(pin) }
+        )
+    }
+
     when (appState) {
         AppState.Splash -> SplashScreen(
             onFinished = { appState = if (uiState.isLoggedIn) AppState.Main else AppState.Login }
@@ -72,13 +93,32 @@ fun ZyroPlayApp(viewModel: IptvViewModel = viewModel()) {
             savedPlaylists = uiState.savedPlaylists,
             onLogin = viewModel::login,
             onQuickConnect = viewModel::switchPlaylist,
+            onImportM3u = viewModel::importLocalM3u,
             onDemoMode = {
                 viewModel.loadDemoData()
                 appState = AppState.Main
             }
         )
         AppState.Player -> playRequest?.let { request ->
-            PlayerScreen(playRequest = request, onBack = { appState = AppState.Main })
+            PlayerScreen(
+                playRequest = request,
+                playerSettings = uiState.playerSettings,
+                onBack = { appState = AppState.Main },
+                onZap = { openPlayer(it) },
+                onEnterPiP = onEnterPiP,
+                onProgressUpdate = { id, pos, dur ->
+                    viewModel.saveWatchProgress(
+                        contentId = id,
+                        title = request.title,
+                        streamUrl = request.streamUrl,
+                        positionMs = pos,
+                        durationMs = dur,
+                        posterUrl = request.posterUrl,
+                        subtitle = request.subtitle,
+                        isLive = request.isLive
+                    )
+                }
+            )
         }
         AppState.Main -> {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -87,17 +127,17 @@ fun ZyroPlayApp(viewModel: IptvViewModel = viewModel()) {
                     CircularProgressIndicator(Modifier.align(Alignment.Center), color = theme.primary)
                 }
                 Row(Modifier.fillMaxSize()) {
-                    ZyroSidebar(
-                        currentRoute = currentRoute,
-                        onNavigate = { currentRoute = it.route }
-                    )
+                    ZyroSidebar(currentRoute = currentRoute, onNavigate = { currentRoute = it.route })
                     Box(Modifier.weight(1f).fillMaxHeight()) {
                         when (currentRoute) {
                             NavDestination.Home.route -> HomeScreen(
                                 featured = uiState.featuredMovie,
                                 movieRows = uiState.movieRows,
+                                continueWatching = uiState.continueWatching,
                                 statusMessage = uiState.statusMessage,
                                 onPlay = { viewModel.buildPlayRequest(it)?.let(openPlayer) },
+                                onMovieDetail = viewModel::openMovieDetail,
+                                onResume = { viewModel.buildPlayRequestFromHistory(it)?.let(openPlayer) },
                                 onOpenSearch = { currentRoute = NavDestination.Search.route }
                             )
                             NavDestination.Live.route -> LiveScreen(
@@ -110,53 +150,63 @@ fun ZyroPlayApp(viewModel: IptvViewModel = viewModel()) {
                             NavDestination.Movies.route -> MoviesScreen(
                                 movies = uiState.movies,
                                 favorites = uiState.favorites,
-                                onMovieClick = { viewModel.buildPlayRequest(it)?.let(openPlayer) },
+                                onMovieClick = viewModel::openMovieDetail,
                                 onToggleFavorite = viewModel::toggleFavorite
                             )
                             NavDestination.Series.route -> SeriesScreen(
                                 series = uiState.series,
                                 selectedSeries = uiState.selectedSeries,
                                 episodes = uiState.selectedSeriesEpisodes,
-                                onSeriesClick = viewModel::loadSeriesEpisodes,
+                                favorites = uiState.favorites,
+                                onSeriesClick = viewModel::openSeriesDetail,
                                 onEpisodeClick = { ep ->
                                     uiState.selectedSeries?.let { s ->
                                         viewModel.buildPlayRequest(ep, s.title)?.let(openPlayer)
                                     }
                                 },
-                                onBackFromEpisodes = viewModel::clearSeriesSelection
+                                onBackFromEpisodes = viewModel::clearSeriesSelection,
+                                onToggleFavorite = viewModel::toggleFavorite
                             )
                             NavDestination.Search.route -> SearchScreen(
                                 query = uiState.searchQuery,
                                 results = uiState.searchResults,
+                                favorites = uiState.favorites,
                                 onQueryChange = viewModel::setSearchQuery,
                                 onChannelClick = { viewModel.buildPlayRequest(it)?.let(openPlayer) },
-                                onMovieClick = { viewModel.buildPlayRequest(it)?.let(openPlayer) },
-                                onSeriesClick = viewModel::loadSeriesEpisodes
+                                onMovieClick = viewModel::openMovieDetail,
+                                onSeriesClick = { series ->
+                                    viewModel.openSeriesDetail(series)
+                                    currentRoute = NavDestination.Series.route
+                                },
+                                onToggleFavorite = viewModel::toggleFavorite
                             )
                             NavDestination.Epg.route -> EpgScreen(
                                 channels = uiState.liveChannels,
-                                programs = uiState.epgPrograms
+                                programs = uiState.epgPrograms,
+                                onProgramClick = { channel, program ->
+                                    viewModel.buildPlayRequestFromEpg(channel, program)?.let(openPlayer)
+                                }
                             )
                             NavDestination.CatchUp.route -> CatchUpScreen(
-                                programs = uiState.epgPrograms.filter { it.endTime < System.currentTimeMillis() }
-                                    .map {
-                                        com.zyroplay.app.model.VodItem(it.id, it.title, "", "", "Replay", description = it.description)
-                                    }.ifEmpty { com.zyroplay.app.data.MockData.catchUpPrograms },
-                                onProgramClick = { item ->
-                                    viewModel.buildPlayRequest(item)?.let(openPlayer)
-                                        ?: openPlayer(PlayRequest(item.title, IptvViewModel.SAMPLE_HLS, item.genre))
-                                }
+                                programs = uiState.catchUpPrograms,
+                                onProgramClick = { viewModel.buildPlayRequest(it)?.let(openPlayer) }
                             )
                             NavDestination.Favorites.route -> FavoritesScreen(
                                 channels = uiState.favoriteChannels,
                                 movies = uiState.favoriteMovies,
+                                series = uiState.favoriteSeries,
                                 onChannelClick = { viewModel.buildPlayRequest(it)?.let(openPlayer) },
-                                onMovieClick = { viewModel.buildPlayRequest(it)?.let(openPlayer) }
+                                onMovieClick = viewModel::openMovieDetail,
+                                onSeriesClick = viewModel::openSeriesDetail,
+                                onToggleFavorite = viewModel::toggleFavorite
                             )
                             NavDestination.Settings.route -> SettingsScreen(
                                 currentThemeIndex = uiState.themeIndex,
                                 savedPlaylists = uiState.savedPlaylists,
                                 activePlaylistId = uiState.activePlaylist?.id,
+                                playerSettings = uiState.playerSettings,
+                                parentalControlEnabled = uiState.parentalControlEnabled,
+                                tmdbApiKey = viewModel.getTmdbApiKey(),
                                 onThemeSelected = viewModel::setTheme,
                                 onSelectPlaylist = viewModel::switchPlaylist,
                                 onDeletePlaylist = viewModel::deletePlaylist,
@@ -167,11 +217,40 @@ fun ZyroPlayApp(viewModel: IptvViewModel = viewModel()) {
                                 onLogout = {
                                     viewModel.logout()
                                     appState = AppState.Login
-                                }
+                                },
+                                onSavePlayerSettings = viewModel::updatePlayerSettings,
+                                onParentalControlChange = viewModel::setParentalControl,
+                                onTmdbKeyChange = viewModel::saveTmdbApiKey
                             )
                         }
                     }
                 }
+
+                uiState.detailMovie?.let { movie ->
+                    val resumePos = uiState.watchHistory.find { it.contentId == movie.id }?.positionMs ?: 0L
+                    VodDetailScreen(
+                        movie = movie,
+                        isFavorite = uiState.favorites.contains(movie.id),
+                        resumePositionMs = resumePos,
+                        onBack = viewModel::clearDetailMovie,
+                        onPlay = { pos -> viewModel.buildPlayRequest(movie, pos)?.let(openPlayer) },
+                        onToggleFavorite = { viewModel.toggleFavorite(movie.id) }
+                    )
+                }
+
+                uiState.detailSeries?.let { series ->
+                    SeriesDetailScreen(
+                        series = series,
+                        isFavorite = uiState.favorites.contains(series.id),
+                        onBack = viewModel::clearDetailSeries,
+                        onViewEpisodes = {
+                            viewModel.loadSeriesEpisodes(series)
+                            viewModel.clearDetailSeries()
+                        },
+                        onToggleFavorite = { viewModel.toggleFavorite(series.id) }
+                    )
+                }
+
                 SnackbarHost(snackbarHostState, Modifier.align(Alignment.BottomCenter))
             }
         }

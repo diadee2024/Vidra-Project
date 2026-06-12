@@ -2,8 +2,8 @@ package com.zyroplay.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,11 +30,11 @@ import androidx.compose.ui.unit.dp
 import com.zyroplay.app.model.Channel
 import com.zyroplay.app.model.EpgProgram
 import com.zyroplay.app.ui.components.SectionHeader
+import com.zyroplay.app.ui.modifier.tvFocusable
 import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroCard
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
-import com.zyroplay.app.ui.theme.ZyroTextSecondary
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -49,7 +49,8 @@ private const val DAYS = 7
 @Composable
 fun EpgScreen(
     channels: List<Channel>,
-    programs: List<EpgProgram>
+    programs: List<EpgProgram>,
+    onProgramClick: (Channel, EpgProgram) -> Unit = { _, _ -> }
 ) {
     val theme = LocalZyroTheme.current
     val now = System.currentTimeMillis()
@@ -67,12 +68,10 @@ fun EpgScreen(
     val hourFormat = remember { SimpleDateFormat("HH:mm", Locale.FRANCE) }
     val dayFormat = remember { SimpleDateFormat("EEE dd/MM", Locale.FRANCE) }
 
-    val visibleChannels = channels.take(20)
-
     Column(modifier = Modifier.fillMaxSize()) {
         SectionHeader(
             title = "Guide TV",
-            subtitle = "Programme sur $DAYS jours • ${visibleChannels.size} chaînes"
+            subtitle = "Programme sur $DAYS jours • ${channels.size} chaînes"
         )
 
         Row(
@@ -82,7 +81,7 @@ fun EpgScreen(
         ) {
             Column(modifier = Modifier.width(CHANNEL_WIDTH_DP.dp)) {
                 Box(modifier = Modifier.height(40.dp))
-                visibleChannels.forEach { channel ->
+                channels.forEach { channel ->
                     Box(
                         modifier = Modifier
                             .height(ROW_HEIGHT_DP.dp)
@@ -142,12 +141,12 @@ fun EpgScreen(
                         modifier = Modifier
                             .offset(x = (nowOffsetHours * HOUR_WIDTH_DP).dp)
                             .width(2.dp)
-                            .height((visibleChannels.size * ROW_HEIGHT_DP).dp)
+                            .height((channels.size * ROW_HEIGHT_DP).dp)
                             .background(theme.primary.copy(alpha = 0.8f))
                     )
 
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        visibleChannels.forEach { channel ->
+                        channels.forEach { channel ->
                             val channelPrograms = programs.filter {
                                 it.channelId == channel.id || it.channelId == channel.epgChannelId
                             }.filter { it.endTime > rangeStart && it.startTime < rangeEnd }
@@ -164,6 +163,7 @@ fun EpgScreen(
                                     val durationMs = (endOffset - startOffset).coerceAtLeast(3_600_000L / 2)
                                     val leftDp = (startOffset / 3_600_000f) * HOUR_WIDTH_DP
                                     val widthDp = (durationMs / 3_600_000f) * HOUR_WIDTH_DP
+                                    val isPast = program.endTime < now
 
                                     Box(
                                         modifier = Modifier
@@ -171,8 +171,18 @@ fun EpgScreen(
                                             .width(widthDp.coerceAtLeast(40f).dp)
                                             .height((ROW_HEIGHT_DP - 4).dp)
                                             .clip(RoundedCornerShape(6.dp))
-                                            .background(theme.primary.copy(alpha = 0.25f))
-                                            .border(1.dp, theme.secondary.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                            .background(
+                                                if (isPast) theme.secondary.copy(alpha = 0.2f)
+                                                else theme.primary.copy(alpha = 0.25f)
+                                            )
+                                            .border(
+                                                1.dp,
+                                                if (isPast) theme.secondary.copy(alpha = 0.5f)
+                                                else theme.secondary.copy(alpha = 0.4f),
+                                                RoundedCornerShape(6.dp)
+                                            )
+                                            .tvFocusable()
+                                            .clickable { onProgramClick(channel, program) }
                                             .padding(horizontal = 6.dp, vertical = 4.dp),
                                         contentAlignment = Alignment.CenterStart
                                     ) {

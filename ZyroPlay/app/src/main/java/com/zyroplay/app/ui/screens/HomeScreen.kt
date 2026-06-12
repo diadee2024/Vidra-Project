@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -32,7 +35,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zyroplay.app.model.ContentRow
 import com.zyroplay.app.model.VodItem
+import com.zyroplay.app.model.WatchHistoryItem
 import com.zyroplay.app.ui.components.ContentRowSection
+import com.zyroplay.app.ui.components.PosterCard
+import com.zyroplay.app.ui.components.ZyroAsyncImage
 import com.zyroplay.app.ui.components.ZyroSearchBar
 import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroTextMuted
@@ -44,8 +50,11 @@ import com.zyroplay.app.ui.theme.ZyroWarning
 fun HomeScreen(
     featured: VodItem?,
     movieRows: List<ContentRow>,
+    continueWatching: List<WatchHistoryItem> = emptyList(),
     statusMessage: String?,
     onPlay: (VodItem) -> Unit,
+    onMovieDetail: (VodItem) -> Unit = onPlay,
+    onResume: (WatchHistoryItem) -> Unit,
     onOpenSearch: () -> Unit = {}
 ) {
     val theme = LocalZyroTheme.current
@@ -68,6 +77,42 @@ fun HomeScreen(
             }
         }
 
+        if (continueWatching.isNotEmpty()) {
+            Text(
+                "Continuer à regarder",
+                style = MaterialTheme.typography.titleLarge,
+                color = ZyroTextPrimary,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+            )
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(continueWatching) { item ->
+                    Column(
+                        modifier = Modifier
+                            .width(150.dp)
+                            .clickable { onResume(item) }
+                    ) {
+                        ZyroAsyncImage(
+                            url = item.posterUrl,
+                            contentDescription = item.title,
+                            fallbackText = item.title,
+                            modifier = Modifier
+                                .width(150.dp)
+                                .height(90.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(item.title, color = ZyroTextPrimary, maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                        val pct = if (item.durationMs > 0) (item.positionMs * 100 / item.durationMs).toInt() else 0
+                        Text("$pct% vu", color = theme.secondary, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         featured?.let { movie ->
             Box(
                 modifier = Modifier
@@ -75,13 +120,23 @@ fun HomeScreen(
                     .height(280.dp)
                     .padding(horizontal = 24.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        Brush.linearGradient(
-                            listOf(theme.primary.copy(alpha = 0.5f), theme.secondary.copy(alpha = 0.2f), theme.card)
-                        )
-                    )
-                    .border(1.dp, ZyroTextMuted.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+                    .clickable { onMovieDetail(movie) }
             ) {
+                ZyroAsyncImage(
+                    url = movie.posterUrl,
+                    contentDescription = movie.title,
+                    fallbackText = movie.title,
+                    modifier = Modifier.fillMaxSize()
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+                            )
+                        )
+                )
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -123,7 +178,7 @@ fun HomeScreen(
         }
 
         movieRows.forEach { row ->
-            ContentRowSection(row = row, onItemClick = onPlay)
+            ContentRowSection(row = row, onItemClick = onMovieDetail)
             Spacer(modifier = Modifier.height(16.dp))
         }
     }

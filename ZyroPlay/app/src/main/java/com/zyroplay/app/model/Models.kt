@@ -38,7 +38,9 @@ data class Channel(
     val streamUrl: String = "",
     val epgChannelId: String? = null,
     val isLive: Boolean = true,
-    val currentProgram: String = ""
+    val currentProgram: String = "",
+    val tvArchive: Boolean = false,
+    val tvArchiveDurationDays: Int = 0
 )
 
 data class VodItem(
@@ -93,7 +95,41 @@ data class PlayRequest(
     val title: String,
     val streamUrl: String,
     val subtitle: String = "",
-    val posterUrl: String? = null
+    val posterUrl: String? = null,
+    val contentId: String = "",
+    val isLive: Boolean = false,
+    val channelList: List<Channel> = emptyList(),
+    val startPositionMs: Long = 0L
+)
+
+data class CatchUpProgram(
+    val id: String,
+    val channelId: String,
+    val channelName: String,
+    val title: String,
+    val description: String = "",
+    val startTime: Long,
+    val endTime: Long,
+    val streamUrl: String
+)
+
+data class WatchHistoryItem(
+    val contentId: String,
+    val title: String,
+    val streamUrl: String,
+    val posterUrl: String? = null,
+    val subtitle: String = "",
+    val positionMs: Long = 0L,
+    val durationMs: Long = 0L,
+    val lastWatched: Long = System.currentTimeMillis(),
+    val isLive: Boolean = false
+)
+
+data class PlayerSettings(
+    val bufferSeconds: Int = 15,
+    val subtitlesEnabled: Boolean = true,
+    val preferredAudioLanguage: String = "auto",
+    val aspectRatio: String = "fit"
 )
 
 data class SearchResults(

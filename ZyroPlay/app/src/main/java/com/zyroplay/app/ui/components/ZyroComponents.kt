@@ -24,8 +24,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
@@ -55,6 +58,7 @@ import com.zyroplay.app.ui.theme.ZyroSurfaceElevated
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
 import com.zyroplay.app.ui.theme.ZyroTextSecondary
+import com.zyroplay.app.ui.modifier.tvFocusable
 import com.zyroplay.app.ui.theme.ZyroWarning
 
 @Composable
@@ -193,7 +197,9 @@ fun CategoryChip(
 fun ChannelCard(
     channel: Channel,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isFavorite: Boolean = false,
+    onToggleFavorite: (() -> Unit)? = null
 ) {
     val theme = LocalZyroTheme.current
     Column(
@@ -202,22 +208,21 @@ fun ChannelCard(
             .clip(RoundedCornerShape(16.dp))
             .background(ZyroCard)
             .border(1.dp, ZyroTextMuted.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .tvFocusable()
             .clickable(onClick = onClick)
             .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(ZyroSurfaceElevated),
-            contentAlignment = Alignment.Center
+            modifier = Modifier.size(64.dp)
         ) {
-            Text(
-                text = channel.name.take(2).uppercase(),
-                style = MaterialTheme.typography.titleMedium,
-                color = theme.secondary,
-                fontWeight = FontWeight.Bold
+            ZyroAsyncImage(
+                url = channel.logoUrl,
+                contentDescription = channel.name,
+                fallbackText = channel.name,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(12.dp))
             )
             if (channel.isLive) {
                 Box(
@@ -226,6 +231,19 @@ fun ChannelCard(
                         .size(10.dp)
                         .background(ZyroLive, CircleShape)
                 )
+            }
+            if (onToggleFavorite != null) {
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.align(Alignment.BottomEnd).size(28.dp)
+                ) {
+                    Icon(
+                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Favori",
+                        tint = if (isFavorite) Color(0xFFFF3D57) else Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -256,12 +274,14 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     width: Int = 150,
     height: Int = 220,
-    isFavorite: Boolean = false
+    isFavorite: Boolean = false,
+    onToggleFavorite: (() -> Unit)? = null
 ) {
     val theme = LocalZyroTheme.current
     Column(
         modifier = modifier
             .width(width.dp)
+            .tvFocusable()
             .clickable(onClick = onClick)
     ) {
         Box(
@@ -269,19 +289,13 @@ fun PosterCard(
                 .width(width.dp)
                 .height(height.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(
-                    Brush.linearGradient(
-                        listOf(theme.primary.copy(alpha = 0.4f), theme.secondary.copy(alpha = 0.2f), theme.card)
-                    )
-                )
-                .border(1.dp, ZyroTextMuted.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
+                .border(1.dp, ZyroTextMuted.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
         ) {
-            Text(
-                text = item.title.take(3).uppercase(),
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.White.copy(alpha = 0.3f),
-                fontWeight = FontWeight.Bold
+            ZyroAsyncImage(
+                url = item.posterUrl,
+                contentDescription = item.title,
+                fallbackText = item.title,
+                modifier = Modifier.fillMaxSize()
             )
             if (item.rating.isNotEmpty()) {
                 Row(
@@ -296,6 +310,19 @@ fun PosterCard(
                     Icon(Icons.Default.Star, null, tint = ZyroWarning, modifier = Modifier.size(12.dp))
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(item.rating, fontSize = 10.sp, color = Color.White)
+                }
+            }
+            if (onToggleFavorite != null) {
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.align(Alignment.TopStart).size(32.dp)
+                ) {
+                    Icon(
+                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Favori",
+                        tint = if (isFavorite) Color(0xFFFF3D57) else Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
@@ -321,14 +348,18 @@ fun PosterCard(
 fun SeriesCard(
     series: SeriesItem,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isFavorite: Boolean = false,
+    onToggleFavorite: (() -> Unit)? = null
 ) {
     PosterCard(
-        item = VodItem(series.id, series.title, "", series.rating, series.genre),
+        item = VodItem(series.id, series.title, "", series.rating, series.genre, posterUrl = series.posterUrl),
         onClick = onClick,
         modifier = modifier,
         width = 150,
-        height = 220
+        height = 220,
+        isFavorite = isFavorite,
+        onToggleFavorite = onToggleFavorite
     )
 }
 
@@ -359,7 +390,9 @@ fun ContentRowSection(
 fun ChannelGrid(
     channels: List<Channel>,
     onChannelClick: (Channel) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    favorites: Set<String> = emptySet(),
+    onToggleFavorite: ((String) -> Unit)? = null
 ) {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(140.dp),
@@ -368,8 +401,13 @@ fun ChannelGrid(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(channels) { channel ->
-            ChannelCard(channel = channel, onClick = { onChannelClick(channel) })
+        items(channels, key = { it.id }) { channel ->
+            ChannelCard(
+                channel = channel,
+                onClick = { onChannelClick(channel) },
+                isFavorite = favorites.contains(channel.id),
+                onToggleFavorite = onToggleFavorite?.let { { it(channel.id) } }
+            )
         }
     }
 }
