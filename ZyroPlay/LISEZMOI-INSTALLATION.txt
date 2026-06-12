@@ -1,0 +1,32 @@
+ZYRO PLAY — Installation sur votre PC Windows
+=============================================
+
+Je ne peux pas acceder a votre disque D:\ depuis le cloud.
+Mais voici UNE SEULE commande a lancer sur votre PC :
+
+--- METHODE 1 (la plus simple) ---
+
+1. Ouvrez PowerShell (clic droit > Executer en tant qu'administrateur)
+2. Collez cette commande et appuyez sur Entree :
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr -useb https://raw.githubusercontent.com/diadee2024/Vidra-Project/cursor/zyro-play-iptv-950c/ZyroPlay/install-sur-windows.ps1 | iex"
+
+--- METHODE 2 (si vous avez deja le dossier) ---
+
+Double-cliquez sur : INSTALLER-ZYROPLAY.bat
+
+--- RESULTAT ---
+
+Le projet sera copie dans :
+  D:\PROJET DEV\ZYRO PLAY
+
+Si votre logo (logo.png) est deja dans ce dossier,
+il sera automatiquement integre dans l'application.
+
+--- COMPILER L'APK ---
+
+cd "D:\PROJET DEV\ZYRO PLAY"
+.\gradlew assembleRelease
+
+APK genere :
+  app\build\outputs\apk\release\app-release.apk
