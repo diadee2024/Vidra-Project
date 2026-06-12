@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Vidra Project</string>
+    <string name="tagline">Émulateurs PC et Xbox pour Android</string>
+    <string name="emulators_title">Nos émulateurs</string>
+    <string name="boxvidra_desc">📦 BoxVidra — Émulateur PC pour Android. Modes Desktop, Application et Tiny. Exécute des applications Windows via Wine.</string>
+    <string name="xboxvidra_desc">🎮 XboxVidra — Émulateur Xbox pour Android. Basé sur l\'architecture BoxVidra, optimisé pour les jeux Xbox.</string>
+    <string name="requirements_title">Prérequis d\'installation</string>
+    <string name="requirements_body">• Android 10 ou supérieur\n• Termux (terminal Linux)\n• Termux-X11 (interface graphique)\n• Input Bridge (contrôleur tactile)\n• 8 Go RAM minimum recommandés</string>
+    <string name="btn_telegram">Rejoindre Telegram</string>
+    <string name="btn_youtube">Chaîne YouTube</string>
+    <string name="btn_github">Voir sur GitHub</string>
+</resources>
