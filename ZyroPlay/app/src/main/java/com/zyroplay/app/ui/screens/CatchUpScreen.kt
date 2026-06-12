@@ -28,28 +28,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.zyroplay.app.data.MockData
 import com.zyroplay.app.model.VodItem
 import com.zyroplay.app.ui.components.SectionHeader
+import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroCard
-import com.zyroplay.app.ui.theme.ZyroCyan
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
 import com.zyroplay.app.ui.theme.ZyroTextSecondary
 
 @Composable
-fun CatchUpScreen(onProgramClick: (VodItem) -> Unit) {
+fun CatchUpScreen(
+    programs: List<VodItem>,
+    onProgramClick: (VodItem) -> Unit
+) {
     Column(modifier = Modifier.fillMaxSize()) {
         SectionHeader(
             title = "Replay / Catch-Up",
-            subtitle = "Revoyez les programmes des 7 derniers jours"
+            subtitle = "${programs.size} programmes disponibles"
         )
-
         LazyColumn(
             contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(MockData.catchUpPrograms) { program ->
+            items(programs) { program ->
                 CatchUpItem(program = program, onClick = { onProgramClick(program) })
             }
         }
@@ -58,6 +59,7 @@ fun CatchUpScreen(onProgramClick: (VodItem) -> Unit) {
 
 @Composable
 private fun CatchUpItem(program: VodItem, onClick: () -> Unit) {
+    val theme = LocalZyroTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -72,20 +74,20 @@ private fun CatchUpItem(program: VodItem, onClick: () -> Unit) {
             modifier = Modifier
                 .size(56.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(ZyroCyan.copy(alpha = 0.15f)),
+                .background(theme.secondary.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Replay, null, tint = ZyroCyan, modifier = Modifier.size(28.dp))
+            Icon(Icons.Default.Replay, null, tint = theme.secondary, modifier = Modifier.size(28.dp))
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(program.title, style = MaterialTheme.typography.titleMedium, color = ZyroTextPrimary)
             Text(
-                "${program.genre} • ${program.duration}",
+                "${program.genre} • ${program.duration.ifBlank { "Replay" }}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ZyroTextSecondary
             )
         }
-        Icon(Icons.Default.PlayArrow, null, tint = ZyroCyan, modifier = Modifier.size(32.dp))
+        Icon(Icons.Default.PlayArrow, null, tint = theme.primary, modifier = Modifier.size(32.dp))
     }
 }

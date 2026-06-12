@@ -43,21 +43,18 @@ import com.zyroplay.app.model.Channel
 import com.zyroplay.app.model.ContentRow
 import com.zyroplay.app.model.SeriesItem
 import com.zyroplay.app.model.VodItem
+import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroCard
-import com.zyroplay.app.ui.theme.ZyroCyan
 import com.zyroplay.app.ui.theme.ZyroLive
-import com.zyroplay.app.ui.theme.ZyroPurple
 import com.zyroplay.app.ui.theme.ZyroSurfaceElevated
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
 import com.zyroplay.app.ui.theme.ZyroTextSecondary
 import com.zyroplay.app.ui.theme.ZyroWarning
 
-val ZyroGradient = Brush.horizontalGradient(listOf(ZyroPurple, ZyroCyan))
-val ZyroGradientVertical = Brush.verticalGradient(listOf(ZyroPurple.copy(alpha = 0.3f), Color.Transparent))
-
 @Composable
 fun ZyroGradientBackground(modifier: Modifier = Modifier) {
+    val theme = LocalZyroTheme.current
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -68,10 +65,7 @@ fun ZyroGradientBackground(modifier: Modifier = Modifier) {
                 .fillMaxSize()
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(
-                            ZyroPurple.copy(alpha = 0.15f),
-                            Color.Transparent
-                        ),
+                        colors = listOf(theme.primary.copy(alpha = 0.15f), Color.Transparent),
                         radius = 800f
                     )
                 )
@@ -81,10 +75,7 @@ fun ZyroGradientBackground(modifier: Modifier = Modifier) {
                 .fillMaxSize()
                 .background(
                     Brush.radialGradient(
-                        colors = listOf(
-                            ZyroCyan.copy(alpha = 0.08f),
-                            Color.Transparent
-                        ),
+                        colors = listOf(theme.secondary.copy(alpha = 0.08f), Color.Transparent),
                         radius = 600f,
                         center = androidx.compose.ui.geometry.Offset(1200f, 400f)
                     )
@@ -95,6 +86,7 @@ fun ZyroGradientBackground(modifier: Modifier = Modifier) {
 
 @Composable
 fun ZyroLogo(modifier: Modifier = Modifier, size: Int = 48) {
+    val theme = LocalZyroTheme.current
     Box(
         modifier = modifier.size(size.dp),
         contentAlignment = Alignment.Center
@@ -102,10 +94,7 @@ fun ZyroLogo(modifier: Modifier = Modifier, size: Int = 48) {
         Box(
             modifier = Modifier
                 .size(size.dp)
-                .background(
-                    brush = ZyroGradient,
-                    shape = RoundedCornerShape(12.dp)
-                ),
+                .background(brush = theme.gradient, shape = RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -152,12 +141,13 @@ fun CategoryChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalZyroTheme.current
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .then(
                 if (selected) {
-                    Modifier.background(brush = ZyroGradient)
+                    Modifier.background(brush = theme.gradient)
                 } else {
                     Modifier
                         .background(ZyroSurfaceElevated)
@@ -182,6 +172,7 @@ fun ChannelCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalZyroTheme.current
     Column(
         modifier = modifier
             .width(140.dp)
@@ -202,7 +193,7 @@ fun ChannelCard(
             Text(
                 text = channel.name.take(2).uppercase(),
                 style = MaterialTheme.typography.titleMedium,
-                color = ZyroCyan,
+                color = theme.secondary,
                 fontWeight = FontWeight.Bold
             )
             if (channel.isLive) {
@@ -241,8 +232,10 @@ fun PosterCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     width: Int = 150,
-    height: Int = 220
+    height: Int = 220,
+    isFavorite: Boolean = false
 ) {
+    val theme = LocalZyroTheme.current
     Column(
         modifier = modifier
             .width(width.dp)
@@ -255,11 +248,7 @@ fun PosterCard(
                 .clip(RoundedCornerShape(12.dp))
                 .background(
                     Brush.linearGradient(
-                        listOf(
-                            ZyroPurple.copy(alpha = 0.4f),
-                            ZyroCyan.copy(alpha = 0.2f),
-                            ZyroCard
-                        )
+                        listOf(theme.primary.copy(alpha = 0.4f), theme.secondary.copy(alpha = 0.2f), theme.card)
                     )
                 )
                 .border(1.dp, ZyroTextMuted.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),

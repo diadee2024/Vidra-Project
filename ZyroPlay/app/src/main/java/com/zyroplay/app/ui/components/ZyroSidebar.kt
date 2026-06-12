@@ -26,8 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.zyroplay.app.model.NavDestination
 import com.zyroplay.app.ui.navigation.NavItem
 import com.zyroplay.app.ui.navigation.mainNavItems
-import com.zyroplay.app.ui.theme.ZyroCyan
-import com.zyroplay.app.ui.theme.ZyroPurple
+import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroSurface
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
@@ -39,6 +38,7 @@ fun ZyroSidebar(
     onNavigate: (NavDestination) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val theme = LocalZyroTheme.current
     Column(
         modifier = modifier
             .width(220.dp)
@@ -58,7 +58,7 @@ fun ZyroSidebar(
         Text(
             text = "play",
             style = MaterialTheme.typography.titleMedium,
-            color = ZyroCyan,
+            color = theme.secondary,
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(32.dp))
@@ -66,6 +66,7 @@ fun ZyroSidebar(
         mainNavItems.forEach { item ->
             SidebarItem(
                 item = item,
+                theme = theme,
                 selected = currentRoute == item.destination.route,
                 onClick = { onNavigate(item.destination) }
             )
@@ -85,6 +86,7 @@ fun ZyroSidebar(
 @Composable
 private fun SidebarItem(
     item: NavItem,
+    theme: com.zyroplay.app.ui.theme.ZyroThemeColors,
     selected: Boolean,
     onClick: () -> Unit
 ) {
@@ -97,7 +99,7 @@ private fun SidebarItem(
                 if (selected) {
                     Modifier.background(
                         brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                            listOf(ZyroPurple.copy(alpha = 0.4f), ZyroCyan.copy(alpha = 0.15f))
+                            listOf(theme.primary.copy(alpha = 0.4f), theme.secondary.copy(alpha = 0.15f))
                         )
                     )
                 } else {
@@ -128,7 +130,7 @@ private fun SidebarItem(
                 modifier = Modifier
                     .size(6.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(ZyroCyan)
+                    .background(theme.secondary)
             )
         }
     }

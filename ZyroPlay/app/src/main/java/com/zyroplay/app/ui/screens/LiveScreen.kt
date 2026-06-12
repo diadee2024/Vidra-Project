@@ -16,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.zyroplay.app.data.MockData
 import com.zyroplay.app.model.Channel
 import com.zyroplay.app.ui.components.CategoryChip
 import com.zyroplay.app.ui.components.ChannelGrid
@@ -24,15 +23,22 @@ import com.zyroplay.app.ui.components.SectionHeader
 import com.zyroplay.app.ui.components.ZyroSearchBar
 
 @Composable
-fun LiveScreen(onChannelClick: (Channel) -> Unit) {
+fun LiveScreen(
+    channels: List<Channel>,
+    categories: List<String>,
+    favorites: Set<String>,
+    onChannelClick: (Channel) -> Unit,
+    onToggleFavorite: (String) -> Unit
+) {
     var selectedCategory by remember { mutableStateOf("Tous") }
+    val filtered = if (selectedCategory == "Tous") channels
+    else channels.filter { it.category == selectedCategory }
 
     Column(modifier = Modifier.fillMaxSize()) {
         SectionHeader(
             title = "Live TV",
-            subtitle = "${MockData.channels.size} chaînes disponibles"
+            subtitle = "${channels.size} chaînes • ${favorites.count { id -> channels.any { it.id == id } }} favoris"
         )
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -40,14 +46,12 @@ fun LiveScreen(onChannelClick: (Channel) -> Unit) {
         ) {
             ZyroSearchBar(modifier = Modifier.weight(1f))
         }
-
         Spacer(modifier = Modifier.height(16.dp))
-
         LazyRow(
             modifier = Modifier.padding(horizontal = 24.dp),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
         ) {
-            items(MockData.liveCategories) { category ->
+            items(categories) { category ->
                 CategoryChip(
                     label = category,
                     selected = selectedCategory == category,
@@ -55,19 +59,7 @@ fun LiveScreen(onChannelClick: (Channel) -> Unit) {
                 )
             }
         }
-
         Spacer(modifier = Modifier.height(16.dp))
-
-        val filtered = if (selectedCategory == "Tous") {
-            MockData.channels
-        } else {
-            MockData.channels.filter { it.category == selectedCategory }
-        }
-
-        ChannelGrid(
-            channels = filtered,
-            onChannelClick = onChannelClick,
-            modifier = Modifier.weight(1f)
-        )
+        ChannelGrid(channels = filtered, onChannelClick = onChannelClick, modifier = Modifier.weight(1f))
     }
 }

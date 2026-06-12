@@ -2,7 +2,9 @@ package com.zyroplay.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,17 +16,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Icon
@@ -41,82 +46,114 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zyroplay.app.ui.components.SectionHeader
+import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroCard
-import com.zyroplay.app.ui.theme.ZyroCyan
-import com.zyroplay.app.ui.theme.ZyroPurple
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
 import com.zyroplay.app.ui.theme.ZyroTextSecondary
-
-private data class SettingItem(
-    val icon: ImageVector,
-    val title: String,
-    val subtitle: String,
-    val hasToggle: Boolean = false
-)
+import com.zyroplay.app.ui.theme.zyroThemes
 
 @Composable
-fun SettingsScreen(onLogout: () -> Unit) {
+fun SettingsScreen(
+    currentThemeIndex: Int,
+    onThemeSelected: (Int) -> Unit,
+    onLogout: () -> Unit
+) {
+    val theme = LocalZyroTheme.current
     var parentalControl by remember { mutableStateOf(false) }
     var autoUpdateEpg by remember { mutableStateOf(true) }
 
-    val settings = listOf(
-        SettingItem(Icons.Default.PlaylistPlay, "Gérer les playlists", "Xtream Codes / M3U"),
-        SettingItem(Icons.Default.Palette, "Thème", "Sombre Premium (actif)"),
-        SettingItem(Icons.Default.HighQuality, "Qualité vidéo", "Auto — jusqu'à 4K"),
-        SettingItem(Icons.Default.PlayCircle, "Lecteur externe", "Lecteur intégré"),
-        SettingItem(Icons.Default.Subtitles, "Sous-titres", "Français par défaut"),
-        SettingItem(Icons.Default.Language, "Langue audio", "Français"),
-        SettingItem(Icons.Default.ChildCare, "Contrôle parental", "Restreindre le contenu", hasToggle = true),
-        SettingItem(Icons.Default.Update, "Mise à jour EPG", "Automatique", hasToggle = true)
-    )
-
     Column(modifier = Modifier.fillMaxSize()) {
-        SectionHeader(title = "Réglages", subtitle = "Personnalisez votre expérience ZyroPlay")
+        SectionHeader(title = "Réglages", subtitle = "6 thèmes premium • Qualité 4K • Contrôle parental")
 
         LazyColumn(
             contentPadding = PaddingValues(24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(settings) { setting ->
-                SettingRow(
-                    setting = setting,
-                    toggleValue = when (setting.title) {
-                        "Contrôle parental" -> parentalControl
-                        "Mise à jour EPG" -> autoUpdateEpg
-                        else -> false
-                    },
-                    onToggle = { enabled ->
-                        when (setting.title) {
-                            "Contrôle parental" -> parentalControl = enabled
-                            "Mise à jour EPG" -> autoUpdateEpg = enabled
+            item {
+                Text("Thèmes", style = MaterialTheme.typography.titleMedium, color = ZyroTextPrimary, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(12.dp))
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.height(180.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(zyroThemes) { item ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(72.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(item.card)
+                                .border(
+                                    width = if (item.id == currentThemeIndex) 2.dp else 1.dp,
+                                    brush = item.gradient,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .clickable { onThemeSelected(item.id) }
+                                .padding(12.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(item.gradient, CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(item.name, color = ZyroTextPrimary, style = MaterialTheme.typography.labelMedium)
+                            }
+                            if (item.id == currentThemeIndex) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    null,
+                                    tint = item.secondary,
+                                    modifier = Modifier.align(Alignment.TopEnd)
+                                )
+                            }
                         }
                     }
-                )
+                }
             }
 
             item {
-                Spacer(modifier = Modifier.height(16.dp))
+                SettingRow(Icons.AutoMirrored.Filled.PlaylistPlay, "Gérer les playlists", "Xtream Codes / M3U")
+            }
+            item {
+                SettingRow(Icons.Default.HighQuality, "Qualité vidéo", "Auto — jusqu'à 4K HLS")
+            }
+            item {
+                SettingRow(Icons.Default.PlayCircle, "Lecteur", "ExoPlayer intégré (HLS / TS)")
+            }
+            item {
+                SettingRow(Icons.Default.Subtitles, "Sous-titres", "Français par défaut")
+            }
+            item {
+                SettingRow(Icons.Default.Language, "Langue audio", "Multi-pistes")
+            }
+            item {
+                SettingToggle(Icons.Default.ChildCare, "Contrôle parental", parentalControl) { parentalControl = it }
+            }
+            item {
+                SettingToggle(Icons.Default.Update, "Mise à jour EPG", autoUpdateEpg) { autoUpdateEpg = it }
+            }
+            item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
                         .background(ZyroCard)
                         .border(1.dp, ZyroTextMuted.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+                        .clickable(onClick = onLogout)
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Logout, null, tint = Color(0xFFFF3D57))
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        "Déconnexion",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color(0xFFFF3D57),
-                        modifier = Modifier.weight(1f)
-                    )
+                    Text("Déconnexion", color = Color(0xFFFF3D57), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -124,11 +161,8 @@ fun SettingsScreen(onLogout: () -> Unit) {
 }
 
 @Composable
-private fun SettingRow(
-    setting: SettingItem,
-    toggleValue: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
+private fun SettingRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String) {
+    val theme = LocalZyroTheme.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -138,25 +172,39 @@ private fun SettingRow(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(setting.icon, null, tint = ZyroCyan, modifier = Modifier.size(24.dp))
+        Icon(icon, null, tint = theme.secondary, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(setting.title, style = MaterialTheme.typography.titleMedium, color = ZyroTextPrimary)
-            Text(setting.subtitle, style = MaterialTheme.typography.bodyMedium, color = ZyroTextSecondary)
+        Column {
+            Text(title, color = ZyroTextPrimary, fontWeight = FontWeight.Medium)
+            Text(subtitle, color = ZyroTextSecondary, style = MaterialTheme.typography.bodySmall)
         }
-        if (setting.hasToggle) {
-            Switch(
-                checked = toggleValue,
-                onCheckedChange = onToggle,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = ZyroPurple,
-                    uncheckedThumbColor = ZyroTextMuted,
-                    uncheckedTrackColor = ZyroCard
-                )
-            )
-        } else {
-            Icon(Icons.Default.ChevronRight, null, tint = ZyroTextMuted)
-        }
+    }
+}
+
+@Composable
+private fun SettingToggle(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit
+) {
+    val theme = LocalZyroTheme.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(ZyroCard)
+            .border(1.dp, ZyroTextMuted.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = theme.secondary, modifier = Modifier.size(24.dp))
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(title, color = ZyroTextPrimary, modifier = Modifier.weight(1f))
+        Switch(
+            checked = checked,
+            onCheckedChange = onChecked,
+            colors = SwitchDefaults.colors(checkedTrackColor = theme.primary, checkedThumbColor = Color.White)
+        )
     }
 }

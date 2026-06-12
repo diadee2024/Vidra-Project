@@ -30,21 +30,24 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.zyroplay.app.data.MockData
+import com.zyroplay.app.model.ContentRow
+import com.zyroplay.app.model.VodItem
 import com.zyroplay.app.ui.components.ContentRowSection
-import com.zyroplay.app.ui.components.ZyroGradient
 import com.zyroplay.app.ui.components.ZyroSearchBar
-import com.zyroplay.app.ui.theme.ZyroCard
-import com.zyroplay.app.ui.theme.ZyroCyan
-import com.zyroplay.app.ui.theme.ZyroPurple
+import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
 import com.zyroplay.app.ui.theme.ZyroTextSecondary
 import com.zyroplay.app.ui.theme.ZyroWarning
 
 @Composable
-fun HomeScreen(onPlayFeatured: () -> Unit) {
-    val featured = MockData.featuredMovie
+fun HomeScreen(
+    featured: VodItem?,
+    movieRows: List<ContentRow>,
+    statusMessage: String?,
+    onPlay: (VodItem) -> Unit
+) {
+    val theme = LocalZyroTheme.current
 
     Column(
         modifier = Modifier
@@ -55,75 +58,71 @@ fun HomeScreen(onPlayFeatured: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             ZyroSearchBar(modifier = Modifier.weight(1f))
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(280.dp)
-                .padding(horizontal = 24.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            ZyroPurple.copy(alpha = 0.5f),
-                            ZyroCyan.copy(alpha = 0.2f),
-                            ZyroCard
-                        )
-                    )
-                )
-                .border(1.dp, ZyroTextMuted.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
-        ) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(28.dp)
-            ) {
-                Text(
-                    text = "À la une",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = ZyroCyan
-                )
-                Text(
-                    text = featured.title,
-                    style = MaterialTheme.typography.displayLarge,
-                    color = ZyroTextPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Star, null, tint = ZyroWarning, modifier = Modifier.padding(end = 4.dp))
-                        Text(featured.rating, color = ZyroTextPrimary, style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Text(featured.year, color = ZyroTextSecondary, style = MaterialTheme.typography.bodyMedium)
-                    Text(featured.genre, color = ZyroTextSecondary, style = MaterialTheme.typography.bodyMedium)
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(brush = ZyroGradient)
-                        .clickable(onClick = onPlayFeatured)
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.PlayArrow, null, tint = Color.White)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Lecture", color = Color.White, fontWeight = FontWeight.Bold)
-                }
+            statusMessage?.let {
+                Text(it, style = MaterialTheme.typography.labelMedium, color = theme.secondary)
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        featured?.let { movie ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(280.dp)
+                    .padding(horizontal = 24.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(theme.primary.copy(alpha = 0.5f), theme.secondary.copy(alpha = 0.2f), theme.card)
+                        )
+                    )
+                    .border(1.dp, ZyroTextMuted.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(28.dp)
+                ) {
+                    Text("À la une", color = theme.secondary, style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        movie.title,
+                        style = MaterialTheme.typography.displayLarge,
+                        color = ZyroTextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (movie.rating.isNotBlank()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Star, null, tint = ZyroWarning)
+                                Text(movie.rating, color = ZyroTextPrimary)
+                            }
+                        }
+                        if (movie.year.isNotBlank()) Text(movie.year, color = ZyroTextSecondary)
+                        Text(movie.genre, color = ZyroTextSecondary)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(theme.gradient)
+                            .clickable { onPlay(movie) }
+                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.PlayArrow, null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Lecture", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
-        MockData.movieRows.forEach { row ->
-            ContentRowSection(row = row, onItemClick = { onPlayFeatured() })
+        movieRows.forEach { row ->
+            ContentRowSection(row = row, onItemClick = onPlay)
             Spacer(modifier = Modifier.height(16.dp))
         }
     }

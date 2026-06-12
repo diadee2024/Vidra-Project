@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,23 +28,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.zyroplay.app.ui.components.ZyroGradient
+import com.zyroplay.app.model.PlaylistCredentials
+import com.zyroplay.app.model.PlaylistType
 import com.zyroplay.app.ui.components.ZyroGradientBackground
 import com.zyroplay.app.ui.components.ZyroLogo
-import com.zyroplay.app.ui.theme.ZyroCard
-import com.zyroplay.app.ui.theme.ZyroCyan
+import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroSurfaceElevated
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 import com.zyroplay.app.ui.theme.ZyroTextPrimary
 import com.zyroplay.app.ui.theme.ZyroTextSecondary
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
+fun LoginScreen(
+    isLoading: Boolean,
+    onLogin: (PlaylistCredentials) -> Unit,
+    onDemoMode: () -> Unit
+) {
+    val theme = LocalZyroTheme.current
     var selectedTab by remember { mutableIntStateOf(0) }
     var serverUrl by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
@@ -68,7 +73,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Ajoutez votre playlist IPTV pour commencer",
+                text = "Xtream Codes ou URL M3U",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ZyroTextSecondary
             )
@@ -78,7 +83,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 modifier = Modifier
                     .width(480.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(ZyroCard)
+                    .background(theme.card)
                     .border(1.dp, ZyroTextMuted.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
                     .padding(32.dp)
             ) {
@@ -97,7 +102,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                         Spacer(modifier = Modifier.height(12.dp))
                         LoginField("Nom d'utilisateur", username, onValueChange = { username = it })
                         Spacer(modifier = Modifier.height(12.dp))
-                        LoginField("Mot de passe", password, onValueChange = { password = it }, isPassword = true)
+                        LoginField("Mot de passe", password, onValueChange = { password = it })
                     } else {
                         LoginField("URL M3U / M3U8", m3uUrl, onValueChange = { m3uUrl = it })
                     }
@@ -109,25 +114,35 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                             .fillMaxWidth()
                             .height(48.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(brush = ZyroGradient)
-                            .clickable(onClick = onLoginSuccess),
+                            .background(theme.gradient)
+                            .clickable(enabled = !isLoading) {
+                                val creds = if (selectedTab == 0) {
+                                    PlaylistCredentials(PlaylistType.XTREAM, serverUrl, username, password)
+                                } else {
+                                    PlaylistCredentials(PlaylistType.M3U, m3uUrl = m3uUrl)
+                                }
+                                onLogin(creds)
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "Se connecter",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (isLoading) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.height(24.dp))
+                        } else {
+                            Text("Se connecter", color = Color.White, fontWeight = FontWeight.Bold)
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = "Essai gratuit 7 jours",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = ZyroCyan,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                        text = "Essayer le mode démo",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = theme.secondary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .clickable(onClick = onDemoMode)
+                            .padding(8.dp)
                     )
                 }
             }
@@ -137,13 +152,14 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
 @Composable
 private fun RowScope.LoginTab(label: String, selected: Boolean, onClick: () -> Unit) {
+    val theme = LocalZyroTheme.current
     Box(
         modifier = Modifier
             .weight(1f)
             .height(40.dp)
             .clip(RoundedCornerShape(10.dp))
             .then(
-                if (selected) Modifier.background(brush = ZyroGradient)
+                if (selected) Modifier.background(theme.gradient)
                 else Modifier.background(ZyroSurfaceElevated)
             )
             .clickable(onClick = onClick),
@@ -151,7 +167,6 @@ private fun RowScope.LoginTab(label: String, selected: Boolean, onClick: () -> U
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
             color = if (selected) Color.White else ZyroTextSecondary,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
         )
@@ -162,16 +177,12 @@ private fun RowScope.LoginTab(label: String, selected: Boolean, onClick: () -> U
 private fun LoginField(
     label: String,
     value: String,
-    onValueChange: (String) -> Unit,
-    isPassword: Boolean = false
+    onValueChange: (String) -> Unit
 ) {
+    val theme = LocalZyroTheme.current
     Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = ZyroTextSecondary,
-            modifier = Modifier.padding(bottom = 6.dp)
-        )
+        Text(label, style = MaterialTheme.typography.labelMedium, color = ZyroTextSecondary)
+        Spacer(modifier = Modifier.height(6.dp))
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
@@ -183,7 +194,7 @@ private fun LoginField(
                 .border(1.dp, ZyroTextMuted.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
                 .padding(horizontal = 16.dp),
             textStyle = MaterialTheme.typography.bodyMedium.copy(color = ZyroTextPrimary),
-            cursorBrush = SolidColor(ZyroCyan),
+            cursorBrush = SolidColor(theme.secondary),
             singleLine = true
         )
     }

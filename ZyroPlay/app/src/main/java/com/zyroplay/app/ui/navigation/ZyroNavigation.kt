@@ -1,6 +1,8 @@
 package com.zyroplay.app.ui.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LiveTv
@@ -21,6 +23,7 @@ val mainNavItems = listOf(
     NavItem(NavDestination.Live, Icons.Default.LiveTv),
     NavItem(NavDestination.Movies, Icons.Default.Movie),
     NavItem(NavDestination.Series, Icons.Default.Tv),
+    NavItem(NavDestination.Epg, Icons.Default.CalendarMonth),
     NavItem(NavDestination.CatchUp, Icons.Default.Replay),
     NavItem(NavDestination.Favorites, Icons.Default.Favorite),
     NavItem(NavDestination.Settings, Icons.Default.Settings)

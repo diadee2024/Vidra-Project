@@ -19,25 +19,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.zyroplay.app.data.MockData
 import com.zyroplay.app.model.VodItem
 import com.zyroplay.app.ui.components.CategoryChip
 import com.zyroplay.app.ui.components.PosterCard
 import com.zyroplay.app.ui.components.SectionHeader
 
 @Composable
-fun MoviesScreen(onMovieClick: (VodItem) -> Unit) {
-    val categories = listOf("Tous", "Action", "Comédie", "Drame", "Sci-Fi", "Horreur", "Animation")
+fun MoviesScreen(
+    movies: List<VodItem>,
+    favorites: Set<String>,
+    onMovieClick: (VodItem) -> Unit,
+    onToggleFavorite: (String) -> Unit
+) {
+    val categories = listOf("Tous") + movies.map { it.genre }.filter { it.isNotBlank() }.distinct().take(8)
     var selectedCategory by remember { mutableStateOf("Tous") }
-
-    val allMovies = MockData.movieRows.flatMap { it.items }
+    val filtered = if (selectedCategory == "Tous") movies
+    else movies.filter { it.genre.contains(selectedCategory, true) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SectionHeader(
-            title = "Films",
-            subtitle = "${allMovies.size}+ films en VOD"
-        )
-
+        SectionHeader(title = "Films", subtitle = "${movies.size} films en VOD")
         LazyRow(
             modifier = Modifier.padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -50,9 +50,7 @@ fun MoviesScreen(onMovieClick: (VodItem) -> Unit) {
                 )
             }
         }
-
         Spacer(modifier = Modifier.height(16.dp))
-
         LazyVerticalGrid(
             columns = GridCells.Adaptive(150.dp),
             modifier = Modifier.fillMaxSize(),
@@ -60,8 +58,8 @@ fun MoviesScreen(onMovieClick: (VodItem) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(allMovies) { movie ->
-                PosterCard(item = movie, onClick = { onMovieClick(movie) })
+            items(filtered) { movie ->
+                PosterCard(item = movie, onClick = { onMovieClick(movie) }, isFavorite = favorites.contains(movie.id))
             }
         }
     }

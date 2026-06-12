@@ -1,1 +1,4 @@
-# ZyroPlay ProGuard rules
+-keep class com.google.gson.** { *; }
+-keep class com.zyroplay.app.model.** { *; }
+-keep class androidx.media3.** { *; }
+-dontwarn okhttp3.**

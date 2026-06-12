@@ -4,11 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zyroplay.app.ui.ZyroPlayApp
 import com.zyroplay.app.ui.theme.ZyroPlayTheme
+import com.zyroplay.app.viewmodel.IptvViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,8 +20,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         hideSystemBars()
         setContent {
-            ZyroPlayTheme {
-                ZyroPlayApp()
+            val vm: IptvViewModel = viewModel()
+            val uiState by vm.uiState.collectAsState()
+            ZyroPlayTheme(themeIndex = uiState.themeIndex) {
+                ZyroPlayApp(viewModel = vm)
             }
         }
     }

@@ -17,52 +17,62 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.zyroplay.app.data.MockData
+import com.zyroplay.app.model.Channel
 import com.zyroplay.app.model.VodItem
+import com.zyroplay.app.ui.components.ChannelCard
 import com.zyroplay.app.ui.components.PosterCard
 import com.zyroplay.app.ui.components.SectionHeader
 import com.zyroplay.app.ui.theme.ZyroTextMuted
 
 @Composable
-fun FavoritesScreen(onItemClick: (VodItem) -> Unit) {
-    val favorites = MockData.movieRows.first().items
+fun FavoritesScreen(
+    channels: List<Channel>,
+    movies: List<VodItem>,
+    onChannelClick: (Channel) -> Unit,
+    onMovieClick: (VodItem) -> Unit
+) {
+    val isEmpty = channels.isEmpty() && movies.isEmpty()
 
     Column(modifier = Modifier.fillMaxSize()) {
         SectionHeader(
             title = "Favoris",
-            subtitle = "Vos chaînes et contenus sauvegardés"
+            subtitle = "${channels.size} chaînes • ${movies.size} films"
         )
 
-        if (favorites.isEmpty()) {
+        if (isEmpty) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(48.dp),
+                modifier = Modifier.fillMaxSize().padding(48.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    Icons.Default.FavoriteBorder,
-                    contentDescription = null,
-                    tint = ZyroTextMuted,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                Text(
-                    "Aucun favori pour le moment",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = ZyroTextMuted
-                )
+                Icon(Icons.Default.FavoriteBorder, null, tint = ZyroTextMuted)
+                Text("Aucun favori", style = MaterialTheme.typography.bodyLarge, color = ZyroTextMuted)
             }
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(150.dp),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(24.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(favorites) { item ->
-                    PosterCard(item = item, onClick = { onItemClick(item) })
+            if (channels.isNotEmpty()) {
+                Text("Chaînes", modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(140.dp),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(channels) { ch -> ChannelCard(channel = ch, onClick = { onChannelClick(ch) }) }
+                }
+            }
+            if (movies.isNotEmpty()) {
+                Text("Films", modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(150.dp),
+                    contentPadding = PaddingValues(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(movies) { movie ->
+                        PosterCard(item = movie, onClick = { onMovieClick(movie) }, isFavorite = true)
+                    }
                 }
             }
         }
