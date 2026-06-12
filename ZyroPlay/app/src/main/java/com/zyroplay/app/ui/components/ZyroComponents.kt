@@ -23,8 +23,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
+import com.zyroplay.app.R
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -86,29 +91,21 @@ fun ZyroGradientBackground(modifier: Modifier = Modifier) {
 
 @Composable
 fun ZyroLogo(modifier: Modifier = Modifier, size: Int = 48) {
-    val theme = LocalZyroTheme.current
-    Box(
-        modifier = modifier.size(size.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(size.dp)
-                .background(brush = theme.gradient, shape = RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "ZyroPlay",
-                tint = Color.White,
-                modifier = Modifier.size((size * 0.5).dp)
-            )
-        }
-    }
+    Image(
+        painter = painterResource(id = R.drawable.zyro_logo),
+        contentDescription = "ZyroPlay",
+        modifier = modifier.size(size.dp)
+    )
 }
 
 @Composable
-fun ZyroSearchBar(modifier: Modifier = Modifier) {
+fun ZyroSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = "Rechercher chaînes, films, séries..."
+) {
+    val theme = LocalZyroTheme.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -119,18 +116,44 @@ fun ZyroSearchBar(modifier: Modifier = Modifier) {
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = Icons.Default.Search,
-            contentDescription = "Rechercher",
-            tint = ZyroTextMuted,
-            modifier = Modifier.size(20.dp)
-        )
+        Icon(Icons.Default.Search, null, tint = ZyroTextMuted, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = "Rechercher chaînes, films, séries...",
-            style = MaterialTheme.typography.bodyMedium,
-            color = ZyroTextMuted
+        BasicTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.weight(1f),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = ZyroTextPrimary),
+            cursorBrush = SolidColor(theme.secondary),
+            singleLine = true,
+            decorationBox = { inner ->
+                if (query.isEmpty()) {
+                    Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = ZyroTextMuted)
+                }
+                inner()
+            }
         )
+    }
+}
+
+@Composable
+fun ZyroSearchBar(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(ZyroSurfaceElevated)
+            .border(1.dp, ZyroTextMuted.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Default.Search, null, tint = ZyroTextMuted, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(12.dp))
+        Text("Rechercher chaînes, films, séries...", style = MaterialTheme.typography.bodyMedium, color = ZyroTextMuted)
     }
 }
 

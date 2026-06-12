@@ -45,7 +45,8 @@ fun HomeScreen(
     featured: VodItem?,
     movieRows: List<ContentRow>,
     statusMessage: String?,
-    onPlay: (VodItem) -> Unit
+    onPlay: (VodItem) -> Unit,
+    onOpenSearch: () -> Unit = {}
 ) {
     val theme = LocalZyroTheme.current
 
@@ -61,7 +62,7 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            ZyroSearchBar(modifier = Modifier.weight(1f))
+            ZyroSearchBar(modifier = Modifier.weight(1f), onClick = onOpenSearch)
             statusMessage?.let {
                 Text(it, style = MaterialTheme.typography.labelMedium, color = theme.secondary)
             }

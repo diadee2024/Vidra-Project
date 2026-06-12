@@ -19,12 +19,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.HighQuality
@@ -46,8 +46,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.zyroplay.app.model.SavedPlaylist
 import com.zyroplay.app.ui.components.SectionHeader
 import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroCard
@@ -59,7 +61,41 @@ import com.zyroplay.app.ui.theme.zyroThemes
 @Composable
 fun SettingsScreen(
     currentThemeIndex: Int,
+    savedPlaylists: List<SavedPlaylist>,
+    activePlaylistId: String?,
     onThemeSelected: (Int) -> Unit,
+    onSelectPlaylist: (SavedPlaylist) -> Unit,
+    onDeletePlaylist: (String) -> Unit,
+    onAddPlaylist: () -> Unit,
+    onLogout: () -> Unit
+) {
+    var showPlaylists by remember { mutableStateOf(false) }
+
+    if (showPlaylists) {
+        PlaylistsScreen(
+            playlists = savedPlaylists,
+            activeId = activePlaylistId,
+            onSelect = { onSelectPlaylist(it); showPlaylists = false },
+            onDelete = onDeletePlaylist,
+            onAddNew = { showPlaylists = false; onAddPlaylist() }
+        )
+    } else {
+        SettingsMain(
+            currentThemeIndex = currentThemeIndex,
+            onThemeSelected = onThemeSelected,
+            onManagePlaylists = { showPlaylists = true },
+            playlistCount = savedPlaylists.size,
+            onLogout = onLogout
+        )
+    }
+}
+
+@Composable
+private fun SettingsMain(
+    currentThemeIndex: Int,
+    onThemeSelected: (Int) -> Unit,
+    onManagePlaylists: () -> Unit,
+    playlistCount: Int,
     onLogout: () -> Unit
 ) {
     val theme = LocalZyroTheme.current
@@ -67,14 +103,14 @@ fun SettingsScreen(
     var autoUpdateEpg by remember { mutableStateOf(true) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        SectionHeader(title = "Réglages", subtitle = "6 thèmes premium • Qualité 4K • Contrôle parental")
+        SectionHeader(title = "Réglages", subtitle = "Thèmes • Playlists • Chromecast")
 
         LazyColumn(
             contentPadding = PaddingValues(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Text("Thèmes", style = MaterialTheme.typography.titleMedium, color = ZyroTextPrimary, fontWeight = FontWeight.Bold)
+                Text("Thèmes", color = ZyroTextPrimary, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(12.dp))
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
@@ -84,13 +120,10 @@ fun SettingsScreen(
                 ) {
                     items(zyroThemes) { item ->
                         Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(72.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                            modifier = Modifier.fillMaxWidth().height(72.dp).clip(RoundedCornerShape(12.dp))
                                 .background(item.card)
                                 .border(
-                                    width = if (item.id == currentThemeIndex) 2.dp else 1.dp,
+                                    if (item.id == currentThemeIndex) 2.dp else 1.dp,
                                     brush = item.gradient,
                                     shape = RoundedCornerShape(12.dp)
                                 )
@@ -98,61 +131,36 @@ fun SettingsScreen(
                                 .padding(12.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .background(item.gradient, CircleShape)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(item.name, color = ZyroTextPrimary, style = MaterialTheme.typography.labelMedium)
+                                Box(Modifier.size(24.dp).background(item.gradient, CircleShape))
+                                Spacer(Modifier.width(8.dp))
+                                Text(item.name, color = ZyroTextPrimary, style = MaterialTheme.typography.labelSmall)
                             }
                             if (item.id == currentThemeIndex) {
-                                Icon(
-                                    Icons.Default.Check,
-                                    null,
-                                    tint = item.secondary,
-                                    modifier = Modifier.align(Alignment.TopEnd)
-                                )
+                                Icon(Icons.Default.Check, null, tint = item.secondary, modifier = Modifier.align(Alignment.TopEnd))
                             }
                         }
                     }
                 }
             }
-
             item {
-                SettingRow(Icons.AutoMirrored.Filled.PlaylistPlay, "Gérer les playlists", "Xtream Codes / M3U")
+                SettingRow(Icons.AutoMirrored.Filled.PlaylistPlay, "Gérer les playlists", "$playlistCount enregistrée(s)", onManagePlaylists)
             }
-            item {
-                SettingRow(Icons.Default.HighQuality, "Qualité vidéo", "Auto — jusqu'à 4K HLS")
-            }
-            item {
-                SettingRow(Icons.Default.PlayCircle, "Lecteur", "ExoPlayer intégré (HLS / TS)")
-            }
-            item {
-                SettingRow(Icons.Default.Subtitles, "Sous-titres", "Français par défaut")
-            }
-            item {
-                SettingRow(Icons.Default.Language, "Langue audio", "Multi-pistes")
-            }
-            item {
-                SettingToggle(Icons.Default.ChildCare, "Contrôle parental", parentalControl) { parentalControl = it }
-            }
-            item {
-                SettingToggle(Icons.Default.Update, "Mise à jour EPG", autoUpdateEpg) { autoUpdateEpg = it }
-            }
+            item { SettingRow(Icons.Default.Cast, "Chromecast", "Diffusez sur TV Google Cast", null) }
+            item { SettingRow(Icons.Default.HighQuality, "Qualité vidéo", "Auto — 4K HLS", null) }
+            item { SettingRow(Icons.Default.PlayCircle, "Lecteur", "ExoPlayer intégré", null) }
+            item { SettingRow(Icons.Default.Subtitles, "Sous-titres", "Multi-langues", null) }
+            item { SettingRow(Icons.Default.Language, "Audio", "Multi-pistes", null) }
+            item { SettingToggle(Icons.Default.ChildCare, "Contrôle parental", parentalControl) { parentalControl = it } }
+            item { SettingToggle(Icons.Default.Update, "Mise à jour EPG", autoUpdateEpg) { autoUpdateEpg = it } }
             item {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(ZyroCard)
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ZyroCard)
                         .border(1.dp, ZyroTextMuted.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-                        .clickable(onClick = onLogout)
-                        .padding(16.dp),
+                        .clickable(onClick = onLogout).padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Logout, null, tint = Color(0xFFFF3D57))
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(Modifier.width(16.dp))
                     Text("Déconnexion", color = Color(0xFFFF3D57), fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -161,19 +169,17 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String) {
+private fun SettingRow(icon: ImageVector, title: String, subtitle: String, onClick: (() -> Unit)?) {
     val theme = LocalZyroTheme.current
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(ZyroCard)
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ZyroCard)
             .border(1.dp, ZyroTextMuted.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = theme.secondary, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(Modifier.width(16.dp))
         Column {
             Text(title, color = ZyroTextPrimary, fontWeight = FontWeight.Medium)
             Text(subtitle, color = ZyroTextSecondary, style = MaterialTheme.typography.bodySmall)
@@ -182,29 +188,16 @@ private fun SettingRow(icon: androidx.compose.ui.graphics.vector.ImageVector, ti
 }
 
 @Composable
-private fun SettingToggle(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    checked: Boolean,
-    onChecked: (Boolean) -> Unit
-) {
+private fun SettingToggle(icon: ImageVector, title: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
     val theme = LocalZyroTheme.current
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(ZyroCard)
-            .border(1.dp, ZyroTextMuted.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ZyroCard)
+            .border(1.dp, ZyroTextMuted.copy(alpha = 0.1f), RoundedCornerShape(16.dp)).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = theme.secondary, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(Modifier.width(16.dp))
         Text(title, color = ZyroTextPrimary, modifier = Modifier.weight(1f))
-        Switch(
-            checked = checked,
-            onCheckedChange = onChecked,
-            colors = SwitchDefaults.colors(checkedTrackColor = theme.primary, checkedThumbColor = Color.White)
-        )
+        Switch(checked, onChecked, colors = SwitchDefaults.colors(checkedTrackColor = theme.primary, checkedThumbColor = Color.White))
     }
 }

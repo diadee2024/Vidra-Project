@@ -1,5 +1,7 @@
 package com.zyroplay.app.model
 
+import java.util.UUID
+
 enum class PlaylistType { XTREAM, M3U }
 
 data class PlaylistCredentials(
@@ -14,7 +16,19 @@ data class PlaylistCredentials(
             PlaylistType.XTREAM -> serverUrl.isNotBlank() && username.isNotBlank() && password.isNotBlank()
             PlaylistType.M3U -> m3uUrl.isNotBlank()
         }
+
+    val displayLabel: String
+        get() = when (type) {
+            PlaylistType.XTREAM -> serverUrl.substringAfter("://").substringBefore("/").ifBlank { serverUrl }
+            PlaylistType.M3U -> m3uUrl.substringAfter("://").take(40)
+        }
 }
+
+data class SavedPlaylist(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val credentials: PlaylistCredentials
+)
 
 data class Channel(
     val id: String,
@@ -78,8 +92,17 @@ data class ContentRow(
 data class PlayRequest(
     val title: String,
     val streamUrl: String,
-    val subtitle: String = ""
+    val subtitle: String = "",
+    val posterUrl: String? = null
 )
+
+data class SearchResults(
+    val channels: List<Channel> = emptyList(),
+    val movies: List<VodItem> = emptyList(),
+    val series: List<SeriesItem> = emptyList()
+) {
+    val total: Int get() = channels.size + movies.size + series.size
+}
 
 enum class NavDestination(
     val route: String,
@@ -89,6 +112,7 @@ enum class NavDestination(
     Live("live", "Live TV"),
     Movies("movies", "Films"),
     Series("series", "Séries"),
+    Search("search", "Recherche"),
     Epg("epg", "Guide TV"),
     CatchUp("catchup", "Replay"),
     Favorites("favorites", "Favoris"),

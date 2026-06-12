@@ -25,12 +25,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zyroplay.app.ui.components.ZyroGradientBackground
 import com.zyroplay.app.ui.components.ZyroLogo
-import com.zyroplay.app.ui.theme.ZyroCyan
+import com.zyroplay.app.ui.theme.LocalZyroTheme
 import com.zyroplay.app.ui.theme.ZyroTextSecondary
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
+    val theme = LocalZyroTheme.current
     var startAnimation by remember { mutableFloatStateOf(0f) }
     val alpha by animateFloatAsState(
         targetValue = startAnimation,
@@ -53,7 +54,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            ZyroLogo(size = 100)
+            ZyroLogo(size = 120)
             Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "Zyro",
@@ -65,7 +66,7 @@ fun SplashScreen(onFinished: () -> Unit) {
             Text(
                 text = "play",
                 style = MaterialTheme.typography.displayLarge,
-                color = ZyroCyan,
+                color = theme.secondary,
                 fontWeight = FontWeight.Bold,
                 fontSize = 42.sp
             )

@@ -8,8 +8,11 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.zyroplay.app.model.PlaylistCredentials
 import com.zyroplay.app.model.PlaylistType
+import com.zyroplay.app.model.SavedPlaylist
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -17,38 +20,59 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class PreferencesManager(private val context: Context) {
 
-    val credentialsFlow: Flow<PlaylistCredentials?> = context.dataStore.data.map { prefs ->
-        val type = prefs[KEY_TYPE] ?: return@map null
-        when (type) {
-            PlaylistType.XTREAM.name -> PlaylistCredentials(
-                type = PlaylistType.XTREAM,
-                serverUrl = prefs[KEY_SERVER] ?: "",
-                username = prefs[KEY_USER] ?: "",
-                password = prefs[KEY_PASS] ?: ""
-            )
-            PlaylistType.M3U.name -> PlaylistCredentials(
-                type = PlaylistType.M3U,
-                m3uUrl = prefs[KEY_M3U] ?: ""
-            )
-            else -> null
-        }
+    private val gson = Gson()
+
+    val playlistsFlow: Flow<List<SavedPlaylist>> = context.dataStore.data.map { prefs ->
+        val json = prefs[KEY_PLAYLISTS] ?: return@map emptyList()
+        val type = object : TypeToken<List<SavedPlaylist>>() {}.type
+        runCatching { gson.fromJson<List<SavedPlaylist>>(json, type) }.getOrDefault(emptyList())
+    }
+
+    val activePlaylistIdFlow: Flow<String?> = context.dataStore.data.map { it[KEY_ACTIVE_PLAYLIST] }
+
+    val activeCredentialsFlow: Flow<PlaylistCredentials?> = context.dataStore.data.map { prefs ->
+        val playlistsJson = prefs[KEY_PLAYLISTS] ?: return@map null
+        val activeId = prefs[KEY_ACTIVE_PLAYLIST] ?: return@map null
+        val type = object : TypeToken<List<SavedPlaylist>>() {}.type
+        val playlists = runCatching { gson.fromJson<List<SavedPlaylist>>(playlistsJson, type) }.getOrDefault(emptyList())
+        playlists.find { it.id == activeId }?.credentials
     }
 
     val themeIndexFlow: Flow<Int> = context.dataStore.data.map { it[KEY_THEME] ?: 0 }
 
     val favoritesFlow: Flow<Set<String>> = context.dataStore.data.map { it[KEY_FAVORITES] ?: emptySet() }
 
-    suspend fun saveCredentials(credentials: PlaylistCredentials) {
+    suspend fun savePlaylist(playlist: SavedPlaylist) {
         context.dataStore.edit { prefs ->
-            prefs[KEY_TYPE] = credentials.type.name
-            prefs[KEY_SERVER] = credentials.serverUrl
-            prefs[KEY_USER] = credentials.username
-            prefs[KEY_PASS] = credentials.password
-            prefs[KEY_M3U] = credentials.m3uUrl
+            val current = readPlaylists(prefs).toMutableList()
+            val index = current.indexOfFirst { it.id == playlist.id }
+            if (index >= 0) current[index] = playlist else current.add(playlist)
+            prefs[KEY_PLAYLISTS] = gson.toJson(current)
+            prefs[KEY_ACTIVE_PLAYLIST] = playlist.id
         }
     }
 
-    suspend fun clearCredentials() {
+    suspend fun setActivePlaylist(id: String) {
+        context.dataStore.edit { it[KEY_ACTIVE_PLAYLIST] = id }
+    }
+
+    suspend fun deletePlaylist(id: String) {
+        context.dataStore.edit { prefs ->
+            val current = readPlaylists(prefs).filter { it.id != id }
+            prefs[KEY_PLAYLISTS] = gson.toJson(current)
+            if (prefs[KEY_ACTIVE_PLAYLIST] == id) {
+                prefs.remove(KEY_ACTIVE_PLAYLIST)
+            }
+        }
+    }
+
+    suspend fun clearSession() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(KEY_ACTIVE_PLAYLIST)
+        }
+    }
+
+    suspend fun clearAll() {
         context.dataStore.edit { it.clear() }
     }
 
@@ -64,12 +88,15 @@ class PreferencesManager(private val context: Context) {
         }
     }
 
+    private fun readPlaylists(prefs: Preferences): List<SavedPlaylist> {
+        val json = prefs[KEY_PLAYLISTS] ?: return emptyList()
+        val type = object : TypeToken<List<SavedPlaylist>>() {}.type
+        return runCatching { gson.fromJson<List<SavedPlaylist>>(json, type) }.getOrDefault(emptyList())
+    }
+
     companion object {
-        private val KEY_TYPE = stringPreferencesKey("playlist_type")
-        private val KEY_SERVER = stringPreferencesKey("server_url")
-        private val KEY_USER = stringPreferencesKey("username")
-        private val KEY_PASS = stringPreferencesKey("password")
-        private val KEY_M3U = stringPreferencesKey("m3u_url")
+        private val KEY_PLAYLISTS = stringPreferencesKey("playlists_json")
+        private val KEY_ACTIVE_PLAYLIST = stringPreferencesKey("active_playlist_id")
         private val KEY_THEME = intPreferencesKey("theme_index")
         private val KEY_FAVORITES = stringSetPreferencesKey("favorites")
     }

@@ -5,6 +5,7 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Replay
@@ -23,6 +24,7 @@ val mainNavItems = listOf(
     NavItem(NavDestination.Live, Icons.Default.LiveTv),
     NavItem(NavDestination.Movies, Icons.Default.Movie),
     NavItem(NavDestination.Series, Icons.Default.Tv),
+    NavItem(NavDestination.Search, Icons.Default.Search),
     NavItem(NavDestination.Epg, Icons.Default.CalendarMonth),
     NavItem(NavDestination.CatchUp, Icons.Default.Replay),
     NavItem(NavDestination.Favorites, Icons.Default.Favorite),

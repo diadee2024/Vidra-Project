@@ -14,6 +14,8 @@ import com.zyroplay.app.model.EpisodeItem
 import com.zyroplay.app.model.PlayRequest
 import com.zyroplay.app.model.PlaylistCredentials
 import com.zyroplay.app.model.PlaylistType
+import com.zyroplay.app.model.SavedPlaylist
+import com.zyroplay.app.model.SearchResults
 import com.zyroplay.app.model.SeriesItem
 import com.zyroplay.app.model.VodItem
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,12 +30,15 @@ data class IptvUiState(
     val error: String? = null,
     val statusMessage: String? = null,
     val credentials: PlaylistCredentials? = null,
+    val activePlaylist: SavedPlaylist? = null,
+    val savedPlaylists: List<SavedPlaylist> = emptyList(),
     val liveChannels: List<Channel> = emptyList(),
     val movies: List<VodItem> = emptyList(),
     val series: List<SeriesItem> = emptyList(),
     val epgPrograms: List<EpgProgram> = emptyList(),
     val favorites: Set<String> = emptySet(),
     val themeIndex: Int = 0,
+    val searchQuery: String = "",
     val selectedSeriesEpisodes: List<EpisodeItem> = emptyList(),
     val selectedSeries: SeriesItem? = null,
     val useDemoData: Boolean = false
@@ -41,16 +46,14 @@ data class IptvUiState(
     val movieRows: List<ContentRow>
         get() {
             if (movies.isEmpty()) return emptyList()
-            val recent = movies.take(10)
-            val rest = movies.drop(10).take(20)
             return buildList {
-                add(ContentRow("Nouveautés", recent))
+                add(ContentRow("Nouveautés", movies.take(10)))
+                val rest = movies.drop(10).take(20)
                 if (rest.isNotEmpty()) add(ContentRow("Catalogue", rest))
             }
         }
 
-    val featuredMovie: VodItem?
-        get() = movies.firstOrNull()
+    val featuredMovie: VodItem? get() = movies.firstOrNull()
 
     val favoriteChannels: List<Channel>
         get() = liveChannels.filter { favorites.contains(it.id) }
@@ -60,6 +63,23 @@ data class IptvUiState(
 
     val liveCategories: List<String>
         get() = listOf("Tous") + liveChannels.map { it.category }.distinct().sorted()
+
+    val searchResults: SearchResults
+        get() {
+            val q = searchQuery.trim().lowercase()
+            if (q.isBlank()) return SearchResults()
+            return SearchResults(
+                channels = liveChannels.filter {
+                    it.name.lowercase().contains(q) || it.category.lowercase().contains(q)
+                },
+                movies = movies.filter {
+                    it.title.lowercase().contains(q) || it.genre.lowercase().contains(q)
+                },
+                series = series.filter {
+                    it.title.lowercase().contains(q) || it.genre.lowercase().contains(q)
+                }
+            )
+        }
 }
 
 class IptvViewModel(application: Application) : AndroidViewModel(application) {
@@ -82,21 +102,82 @@ class IptvViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         viewModelScope.launch {
-            prefs.credentialsFlow.collect { creds ->
-                if (creds != null && creds.isValid) {
-                    login(creds, silent = true)
+            prefs.activePlaylistIdFlow.collect { activeId ->
+                _uiState.update { state ->
+                    val active = state.savedPlaylists.find { it.id == activeId }
+                        ?: state.savedPlaylists.firstOrNull()
+                    if (active != null) state.copy(activePlaylist = active) else state
+                }
+            }
+        }
+        viewModelScope.launch {
+            prefs.playlistsFlow.collect { playlists ->
+                _uiState.update { state ->
+                    val activeId = state.activePlaylist?.id
+                    val active = playlists.find { it.id == activeId } ?: playlists.firstOrNull()
+                    state.copy(savedPlaylists = playlists, activePlaylist = active)
+                }
+            }
+        }
+        viewModelScope.launch {
+            prefs.activeCredentialsFlow.collect { creds ->
+                if (creds != null && creds.isValid && !_uiState.value.isLoggedIn && !_uiState.value.isLoading) {
+                    connect(creds, silent = true)
                 }
             }
         }
     }
 
-    fun login(credentials: PlaylistCredentials, silent: Boolean = false) {
+    fun login(name: String, credentials: PlaylistCredentials, silent: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, statusMessage = if (silent) null else "Connexion...") }
+            val playlistName = name.ifBlank { credentials.displayLabel }
+            val playlist = SavedPlaylist(name = playlistName, credentials = credentials)
+            prefs.savePlaylist(playlist)
+            connect(credentials, silent, playlist)
+        }
+    }
+
+    fun switchPlaylist(playlist: SavedPlaylist) {
+        viewModelScope.launch {
+            prefs.setActivePlaylist(playlist.id)
+            connect(playlist.credentials, silent = false, playlist)
+        }
+    }
+
+    fun deletePlaylist(id: String) {
+        viewModelScope.launch {
+            prefs.deletePlaylist(id)
+            if (_uiState.value.activePlaylist?.id == id) {
+                repository.clear()
+                _uiState.update {
+                    it.copy(
+                        isLoggedIn = false,
+                        liveChannels = emptyList(),
+                        movies = emptyList(),
+                        series = emptyList(),
+                        epgPrograms = emptyList(),
+                        credentials = null,
+                        activePlaylist = null,
+                        statusMessage = null
+                    )
+                }
+            }
+        }
+    }
+
+    private fun connect(
+        credentials: PlaylistCredentials,
+        silent: Boolean,
+        playlist: SavedPlaylist? = _uiState.value.savedPlaylists.find { it.credentials == credentials }
+    ) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(isLoading = true, error = null, statusMessage = if (silent) null else "Connexion...")
+            }
             try {
-                prefs.saveCredentials(credentials)
                 val content = repository.loadAll(credentials)
-                applyContent(content, credentials)
+                val active = playlist ?: SavedPlaylist(name = credentials.displayLabel, credentials = credentials)
+                applyContent(content, credentials, active)
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -110,13 +191,14 @@ class IptvViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadDemoData() {
-        val demoCreds = PlaylistCredentials(PlaylistType.M3U, m3uUrl = "demo")
+        val demo = SavedPlaylist(name = "Démo", credentials = PlaylistCredentials(PlaylistType.M3U, m3uUrl = "demo"))
         _uiState.update {
             it.copy(
                 isLoggedIn = true,
                 isLoading = false,
                 useDemoData = true,
-                credentials = demoCreds,
+                credentials = demo.credentials,
+                activePlaylist = demo,
                 liveChannels = MockData.channels,
                 movies = MockData.movieRows.flatMap { row -> row.items },
                 series = MockData.seriesList,
@@ -129,10 +211,20 @@ class IptvViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         viewModelScope.launch {
-            prefs.clearCredentials()
+            prefs.clearSession()
             repository.clear()
-            _uiState.value = IptvUiState(themeIndex = _uiState.value.themeIndex)
+            _uiState.update {
+                IptvUiState(
+                    themeIndex = it.themeIndex,
+                    savedPlaylists = it.savedPlaylists,
+                    favorites = it.favorites
+                )
+            }
         }
+    }
+
+    fun setSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
     }
 
     fun setTheme(index: Int) {
@@ -175,35 +267,48 @@ class IptvViewModel(application: Application) : AndroidViewModel(application) {
 
     fun buildPlayRequest(channel: Channel): PlayRequest? {
         if (channel.streamUrl.isBlank() && !_uiState.value.useDemoData) return null
-        val url = channel.streamUrl.ifBlank { SAMPLE_HLS }
-        return PlayRequest(channel.name, url, channel.currentProgram)
+        return PlayRequest(
+            channel.name,
+            channel.streamUrl.ifBlank { SAMPLE_HLS },
+            channel.currentProgram,
+            channel.logoUrl
+        )
     }
 
     fun buildPlayRequest(movie: VodItem): PlayRequest? {
         if (movie.streamUrl.isBlank() && !_uiState.value.useDemoData) return null
-        val url = movie.streamUrl.ifBlank { SAMPLE_HLS }
-        return PlayRequest(movie.title, url, "${movie.year} • ${movie.genre}")
+        return PlayRequest(
+            movie.title,
+            movie.streamUrl.ifBlank { SAMPLE_HLS },
+            "${movie.year} • ${movie.genre}",
+            movie.posterUrl
+        )
     }
 
     fun buildPlayRequest(episode: EpisodeItem, seriesTitle: String): PlayRequest? {
         if (episode.streamUrl.isBlank() && !_uiState.value.useDemoData) return null
-        val url = episode.streamUrl.ifBlank { SAMPLE_HLS }
-        return PlayRequest("$seriesTitle — ${episode.title}", url, "S${episode.seasonNumber} E${episode.episodeNumber}")
+        return PlayRequest(
+            "$seriesTitle — ${episode.title}",
+            episode.streamUrl.ifBlank { SAMPLE_HLS },
+            "S${episode.seasonNumber} E${episode.episodeNumber}",
+            episode.posterUrl
+        )
     }
 
-    private fun applyContent(content: IptvContent, credentials: PlaylistCredentials) {
+    private fun applyContent(content: IptvContent, credentials: PlaylistCredentials, playlist: SavedPlaylist) {
         _uiState.update {
             it.copy(
                 isLoading = false,
                 isLoggedIn = true,
                 useDemoData = false,
                 credentials = credentials,
+                activePlaylist = playlist,
                 liveChannels = content.liveChannels,
                 movies = content.movies,
                 series = content.series,
                 epgPrograms = content.epgPrograms,
                 error = null,
-                statusMessage = "${content.liveChannels.size} chaînes • ${content.movies.size} films • ${content.series.size} séries"
+                statusMessage = "${playlist.name} — ${content.liveChannels.size} chaînes • ${content.movies.size} films"
             )
         }
     }

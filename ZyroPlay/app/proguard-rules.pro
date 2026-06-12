@@ -2,3 +2,5 @@
 -keep class com.zyroplay.app.model.** { *; }
 -keep class androidx.media3.** { *; }
 -dontwarn okhttp3.**
+-keep class com.google.android.gms.** { *; }
+-keep class com.google.android.gms.cast.** { *; }
